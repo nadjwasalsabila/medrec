@@ -11,39 +11,30 @@ $rs_nama = $_SESSION['rs_nama'];
 require_once '../config/database.php';
 require_once '../config/encryption.php';
 
-// **PERBAIKAN: Pastikan session key sudah sesuai**
-if(!isset($_SESSION['rs_key'])) {
-    $_SESSION['rs_key'] = getHospitalKey($rs_kode);
-    error_log("🎯 Session rs_key di-set untuk RS: " . $rs_kode . " -> " . substr($_SESSION['rs_key'], 0, 10) . "...");
+// **HAPUS DEBUG LOGGING - Tidak perlu tampilkan di user**
+// if(!isset($_SESSION['rs_key'])) {
+//     $_SESSION['rs_key'] = getHospitalKey($rs_kode);
+// }
+
+// **HAPUS: Ambil permintaan yang KITA AJUKAN**
+$permintaan_kita_raw = getData('permintaan', "dari_rs = '$rs_kode'", 'id DESC');
+
+// **PERBAIKAN: Filter hanya data yang valid dengan lengkap**
+$permintaan_kita = [];
+foreach($permintaan_kita_raw as $p) {
+    // Validasi data yang lengkap
+    if(isset($p['id']) && 
+       isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
+       isset($p['status']) && !empty(trim($p['status'])) &&
+       isset($p['ke_rs']) && !empty(trim($p['ke_rs'])) &&
+       isset($p['pasien_nik']) && !empty(trim($p['pasien_nik']))) {
+        $permintaan_kita[] = $p;
+    }
 }
-
-// Debug info
-error_log("=== BERKAS.PHP - ARSIP PERMINTAAN ===");
-error_log("RS KITA: " . $rs_kode);
-error_log("RS NAMA: " . $rs_nama);
-error_log("RS KEY: " . (isset($_SESSION['rs_key']) ? substr($_SESSION['rs_key'], 0, 20) . '...' : 'TIDAK ADA'));
-
-// **PERBAIKAN: Ambil permintaan yang KITA AJUKAN**
-$permintaan_kita = getData('permintaan', "dari_rs = '$rs_kode'", 'id DESC');
-
-error_log("📊 Jumlah permintaan kita: " . count($permintaan_kita));
-
-// **PERBAIKAN: Debug detail setiap permintaan**
-foreach($permintaan_kita as $index => $p) {
-    error_log("📋 Permintaan #" . ($index+1) . ": ID=" . $p['id'] . 
-              ", Pasien=" . $p['pasien_nama'] . 
-              ", Status=" . $p['status'] . 
-              ", DataDikirim=" . (!empty($p['data_dikirim']) ? "YES (" . strlen($p['data_dikirim']) . " chars)" : "NO"));
-}
-
-// **PERBAIKAN: Filter hanya data yang valid**
-$permintaan_kita = array_filter($permintaan_kita, function($item) {
-    return isset($item['id']) && !empty($item['pasien_nama']);
-});
 
 // Proses HAPUS permintaan
 if(isset($_GET['delete']) && isset($_GET['id'])) {
-    $permintaan_id = $_GET['id'];
+    $permintaan_id = intval($_GET['id']);
     
     // Cari permintaan yang KITA ajukan
     $permintaan = null;
@@ -60,7 +51,9 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
         $expired_date = $permintaan['tanggal_expired'] ?? '';
         $is_expired = $expired_date && $expired_date < $today;
         
-        if(($permintaan['status'] ?? '') == 'pending' || $is_expired || ($permintaan['status'] ?? '') == 'ditolak') {
+        $status = $permintaan['status'];
+        
+        if($status == 'pending' || $is_expired || $status == 'ditolak') {
             // Hapus dari database
             $result = deleteData('permintaan', $permintaan_id);
             
@@ -68,12 +61,19 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                 $success = "✅ Permintaan berhasil dihapus!";
                 
                 // Refresh data
-                $permintaan_kita = getData('permintaan', "dari_rs = '$rs_kode'", 'id DESC');
-                    
+                $permintaan_kita_raw = getData('permintaan', "dari_rs = '$rs_kode'", 'id DESC');
+                
                 // Filter ulang
-                $permintaan_kita = array_filter($permintaan_kita, function($item) {
-                    return isset($item['id']) && !empty($item['pasien_nama']);
-                });
+                $permintaan_kita = [];
+                foreach($permintaan_kita_raw as $p) {
+                    if(isset($p['id']) && 
+                       isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
+                       isset($p['status']) && !empty(trim($p['status'])) &&
+                       isset($p['ke_rs']) && !empty(trim($p['ke_rs'])) &&
+                       isset($p['pasien_nik']) && !empty(trim($p['pasien_nik']))) {
+                        $permintaan_kita[] = $p;
+                    }
+                }
             } else {
                 $error = "❌ Gagal menghapus permintaan";
             }
@@ -98,6 +98,7 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
             padding: 20px;
             transition: margin-left 0.3s;
             min-height: 100vh;
+            background: #f8f9fa;
         }
         
         @media (max-width: 768px) {
@@ -113,6 +114,7 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
+            background: white;
             transition: all 0.3s;
         }
         .request-card:hover {
@@ -140,27 +142,54 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
             right: 15px;
             opacity: 0.7;
             transition: opacity 0.3s;
-        }
-        .request-card:hover .delete-btn {
-            opacity: 1;
+            color: #dc3545;
+            text-decoration: none;
         }
         .delete-btn:hover {
+            opacity: 1;
             color: #dc3545 !important;
         }
         .btn-detail {
             background: #0dcaf0;
             color: white;
             border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
             transition: all 0.3s;
         }
         .btn-detail:hover {
             background: #0ba8c8;
+            color: white;
+            text-decoration: none;
             transform: translateY(-2px);
         }
-        .encryption-badge {
-            background: linear-gradient(45deg, #6a11cb, #2575fc);
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        .patient-info {
+            color: #0d6efd;
+            font-weight: 600;
+        }
+        .rs-badge {
+            background: #6c757d;
             color: white;
-            font-size: 0.7em;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+        }
+        .urgensi-badge {
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
         }
     </style>
 </head>
@@ -171,17 +200,11 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
     <!-- Main Content -->
     <div class="main-content">
         <div class="container mt-4">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="../dashboard.php">Dashboard</a></li>
-                    <li class="breadcrumb-item active">Arsip Permintaan</li>
-                </ol>
-            </nav>
-            
+            <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h3><i class="bi bi-archive"></i> Arsip Permintaan yang Diajukan</h3>
-                    <p class="text-muted">Menampilkan semua permintaan yang Anda ajukan ke RS lain</p>
+                    <h3 class="mb-1"><i class="bi bi-archive text-primary"></i> Arsip Permintaan yang Diajukan</h3>
+                    <p class="text-muted mb-0">Menampilkan semua permintaan yang Anda ajukan ke RS lain</p>
                 </div>
                 <div>
                     <a href="ajukan.php" class="btn btn-primary">
@@ -193,8 +216,10 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                 </div>
             </div>
             
+            <!-- Error/Success Messages -->
             <?php if(isset($error)): ?>
             <div class="alert alert-danger alert-dismissible fade show">
+                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Error</h5>
                 <?php echo $error; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
@@ -202,6 +227,7 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
             
             <?php if(isset($success)): ?>
             <div class="alert alert-success alert-dismissible fade show">
+                <h5 class="alert-heading"><i class="bi bi-check-circle"></i> Sukses</h5>
                 <?php echo $success; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
@@ -223,24 +249,16 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                 </div>
             </div>
             
-            <!-- **PERBAIKAN: Debug Panel untuk Developer** -->
-            <div class="alert alert-warning mb-4">
-                <h6><i class="bi bi-bug"></i> Debug Info</h6>
-                <small>
-                    RS Kode: <strong><?php echo $rs_kode; ?></strong><br>
-                    Total Permintaan: <strong><?php echo count($permintaan_kita); ?></strong><br>
-                    Key: <?php echo substr($_SESSION['rs_key'] ?? 'NO KEY', 0, 20); ?>...
-                </small>
-            </div>
+            <!-- **HAPUS DEBUG PANEL** -->
             
             <!-- Daftar Permintaan -->
             <div class="row">
                 <?php if(empty($permintaan_kita)): ?>
                     <div class="col-12">
-                        <div class="text-center py-5">
-                            <i class="bi bi-inbox" style="font-size: 4em; color: #dee2e6;"></i>
-                            <h4 class="text-muted mt-3">Belum ada permintaan yang diajukan</h4>
-                            <p class="text-muted">Ajukan permintaan pertama Anda ke RS lain</p>
+                        <div class="empty-state">
+                            <i class="bi bi-inbox"></i>
+                            <h4 class="mt-3">Belum ada permintaan yang diajukan</h4>
+                            <p class="text-muted mb-4">Ajukan permintaan pertama Anda ke RS lain</p>
                             <a href="ajukan.php" class="btn btn-primary">
                                 <i class="bi bi-send"></i> Ajukan Permintaan Pertama
                             </a>
@@ -250,32 +268,34 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                     <?php 
                     $counter = 0;
                     $data_diterima_counter = 0;
+                    
                     foreach($permintaan_kita as $permintaan): 
+                        // **Data sudah divalidasi, jadi tidak perlu ?? operator**
+                        $permintaan_id = $permintaan['id'];
+                        $pasien_nama = htmlspecialchars($permintaan['pasien_nama']);
+                        $pasien_nik = htmlspecialchars($permintaan['pasien_nik']);
+                        $ke_rs = $permintaan['ke_rs'];
+                        $status = $permintaan['status'];
+                        $urgensi = $permintaan['urgensi'] ?? 'biasa';
+                        $keterangan = htmlspecialchars($permintaan['keterangan'] ?? 'Tidak ada keterangan');
+                        $tanggal_permintaan = $permintaan['tanggal_permintaan'];
+                        
                         $today = date('Y-m-d');
                         $expired_date = $permintaan['tanggal_expired'] ?? '';
                         $is_expired = $expired_date && $expired_date < $today;
                         
-                        // **PERBAIKAN: Logika decrypt data**
+                        // Logika decrypt data
                         $has_response_data = false;
                         $response_data = null;
-                        $decrypt_error = '';
                         
-                        if($permintaan['status'] == 'diterima' && !empty($permintaan['data_dikirim'])) {
-                            error_log("🔄 Proses decrypt data ID: " . $permintaan['id']);
-                            
-                            // **KUNCI YANG DICOBA:**
-                            // 1. Kunci RS pengirim (ke_rs) - karena data dienkripsi dengan kunci RS kita
-                            // 2. Kunci kita sendiri (dari_rs)
-                            // 3. Kunci default
-                            
+                        if($status == 'diterima' && !empty($permintaan['data_dikirim'])) {
                             $keys_to_try = [
-                                getHospitalKey($permintaan['ke_rs']),  // RS pengirim
-                                getHospitalKey($rs_kode),              // RS kita
-                                'key-rs001', 'key-rs002', 'key-rs003'  // Default
+                                getHospitalKey($ke_rs),
+                                getHospitalKey($rs_kode),
+                                'key-rs001', 'key-rs002', 'key-rs003'
                             ];
                             
-                            foreach($keys_to_try as $key_index => $key) {
-                                error_log("  🔑 Coba key $key_index: " . substr($key, 0, 10) . "...");
+                            foreach($keys_to_try as $key) {
                                 $decrypted = decryptData($permintaan['data_dikirim'], $key);
                                 
                                 if(!empty($decrypted)) {
@@ -283,51 +303,46 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                     if($temp_data && is_array($temp_data)) {
                                         $response_data = $temp_data;
                                         $has_response_data = true;
-                                        error_log("  ✅ Berhasil decrypt dengan key $key_index");
                                         break;
                                     }
                                 }
                             }
-                            
-                            if(!$has_response_data) {
-                                $decrypt_error = "Gagal membuka data terenkripsi";
-                                error_log("  ❌ Gagal decrypt semua key");
-                            }
                         }
                         
                         // Tentukan apakah bisa dihapus
-                        $can_delete = ($permintaan['status'] == 'pending' || 
-                                      $permintaan['status'] == 'ditolak' || 
-                                      ($permintaan['status'] == 'diterima' && $is_expired));
+                        $can_delete = ($status == 'pending' || 
+                                      $status == 'ditolak' || 
+                                      ($status == 'diterima' && $is_expired));
                         
                         $counter++;
+                        if($status == 'diterima') $data_diterima_counter++;
                     ?>
                     <div class="col-md-6">
                         <div class="request-card position-relative">
                             
                             <!-- Tombol Hapus -->
                             <?php if($can_delete): ?>
-                            <a href="#" class="delete-btn text-danger" 
-                               onclick="confirmDelete(<?php echo $permintaan['id']; ?>, '<?php echo htmlspecialchars($permintaan['pasien_nama']); ?>', '<?php echo $permintaan['ke_rs']; ?>')"
+                            <a href="#" class="delete-btn" 
+                               onclick="return confirmDelete(<?php echo $permintaan_id; ?>, '<?php echo $pasien_nama; ?>', '<?php echo $ke_rs; ?>')"
                                title="Hapus permintaan">
-                                <i class="bi bi-trash" style="font-size: 1.2em;"></i>
+                                <i class="bi bi-trash"></i>
                             </a>
                             <?php endif; ?>
                             
                             <!-- Header -->
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
-                                    <h5 class="mb-1">
-                                        <i class="bi bi-person-circle text-primary"></i>
-                                        <?php echo htmlspecialchars($permintaan['pasien_nama']); ?>
+                                    <h5 class="mb-1 patient-info">
+                                        <i class="bi bi-person-circle"></i>
+                                        <?php echo $pasien_nama; ?>
                                     </h5>
                                     <p class="mb-1 text-muted small">
-                                        NIK: <?php echo htmlspecialchars($permintaan['pasien_nik']); ?>
+                                        <i class="bi bi-card-text"></i> NIK: <?php echo $pasien_nik; ?>
                                     </p>
                                 </div>
                                 <div class="text-end">
-                                    <span class="badge bg-info">
-                                        <i class="bi bi-hospital"></i> <?php echo $permintaan['ke_rs']; ?>
+                                    <span class="rs-badge">
+                                        <i class="bi bi-hospital"></i> <?php echo $ke_rs; ?>
                                     </span>
                                 </div>
                             </div>
@@ -338,7 +353,7 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                     <div class="col-6">
                                         <i class="bi bi-calendar text-primary"></i>
                                         <strong>Tanggal:</strong><br>
-                                        <?php echo date('d M Y', strtotime($permintaan['tanggal_permintaan'])); ?>
+                                        <?php echo date('d M Y', strtotime($tanggal_permintaan)); ?>
                                     </div>
                                     <div class="col-6">
                                         <i class="bi bi-flag text-warning"></i>
@@ -349,10 +364,10 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                             'biasa' => 'warning',
                                             'tidak_urgent' => 'info'
                                         ];
-                                        $urgensi_color = $urgensi_badge[$permintaan['urgensi']] ?? 'secondary';
+                                        $urgensi_color = $urgensi_badge[$urgensi] ?? 'secondary';
                                         ?>
-                                        <span class="badge bg-<?php echo $urgensi_color; ?>">
-                                            <?php echo strtoupper($permintaan['urgensi']); ?>
+                                        <span class="badge urgensi-badge bg-<?php echo $urgensi_color; ?>">
+                                            <?php echo strtoupper($urgensi); ?>
                                         </span>
                                     </div>
                                 </div>
@@ -362,20 +377,20 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                             <div class="alert alert-light border mb-3">
                                 <i class="bi bi-chat-left-text"></i>
                                 <strong>Alasan Permintaan:</strong><br>
-                                <small><?php echo htmlspecialchars($permintaan['keterangan']); ?></small>
+                                <small><?php echo $keterangan; ?></small>
                             </div>
                             
-                            <!-- Status -->
+                            <!-- Status dan Expired -->
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <?php 
                                     $status_class = 'status-pending';
                                     $status_icon = 'bi-clock';
                                     
-                                    if($permintaan['status'] == 'diterima') {
+                                    if($status == 'diterima') {
                                         $status_class = 'status-diterima';
                                         $status_icon = 'bi-check-circle';
-                                    } elseif($permintaan['status'] == 'ditolak') {
+                                    } elseif($status == 'ditolak') {
                                         $status_class = 'status-ditolak';
                                         $status_icon = 'bi-x-circle';
                                     } elseif($is_expired) {
@@ -383,13 +398,13 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                         $status_icon = 'bi-hourglass-bottom';
                                     }
                                     ?>
-                                    <span class="badge <?php echo $status_class; ?>">
+                                    <span class="badge <?php echo $status_class; ?> status-badge">
                                         <i class="bi <?php echo $status_icon; ?>"></i>
-                                        <?php echo strtoupper($permintaan['status']); ?>
+                                        <?php echo strtoupper($status); ?>
                                     </span>
                                 </div>
                                 
-                                <div>
+                                <div class="text-end">
                                     <?php if($expired_date): ?>
                                         <small class="<?php echo $is_expired ? 'text-danger' : 'text-success'; ?>">
                                             <i class="bi bi-calendar"></i>
@@ -406,14 +421,13 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                 </div>
                             </div>
                             
-                            <!-- **PERBAIKAN: Data Response dari RS Lain (jika ada) -->
-                            <?php if($permintaan['status'] == 'diterima'): ?>
+                            <!-- Data Response dari RS Lain -->
+                            <?php if($status == 'diterima'): ?>
                                 <div class="data-preview">
-                                    <h6><i class="bi bi-inbox text-success"></i> Data dari <?php echo $permintaan['ke_rs']; ?></h6>
+                                    <h6><i class="bi bi-inbox text-success"></i> Data dari <?php echo $ke_rs; ?></h6>
                                     
                                     <?php if($has_response_data && $response_data): ?>
-                                        <!-- Jika berhasil decrypt -->
-                                        <div class="alert alert-success small">
+                                        <div class="alert alert-success small mb-3">
                                             <i class="bi bi-check-circle"></i> Data berhasil dibuka
                                         </div>
                                         
@@ -421,7 +435,9 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-file-earmark-text text-primary me-2"></i>
                                             <div>
-                                                <div class="small fw-bold"><?php echo htmlspecialchars($response_data['file_data']['original_name'] ?? 'File'); ?></div>
+                                                <div class="small fw-bold">
+                                                    <?php echo htmlspecialchars($response_data['file_data']['original_name'] ?? 'File terlampir'); ?>
+                                                </div>
                                                 <div class="small text-muted">
                                                     <?php echo round(($response_data['file_data']['file_size'] ?? 0) / 1024, 2); ?> KB
                                                 </div>
@@ -430,7 +446,7 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                         <?php endif; ?>
                                         
                                         <?php if(isset($response_data['riwayat_medis']) && !empty($response_data['riwayat_medis'])): ?>
-                                        <div class="mb-2">
+                                        <div class="mb-3">
                                             <i class="bi bi-text-paragraph text-info"></i>
                                             <strong>Preview Riwayat:</strong><br>
                                             <div class="small text-muted mt-1">
@@ -444,41 +460,29 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                         <?php endif; ?>
                                         
                                     <?php else: ?>
-                                        <!-- Jika gagal decrypt -->
-                                        <div class="alert alert-warning small">
+                                        <div class="alert alert-warning small mb-3">
                                             <i class="bi bi-exclamation-triangle"></i>
-                                            Data terenkripsi. 
-                                            <?php if(!empty($decrypt_error)): ?>
-                                                <br><small class="text-danger"><?php echo htmlspecialchars($decrypt_error); ?></small>
-                                            <?php endif; ?>
+                                            Data terenkripsi
                                         </div>
                                     <?php endif; ?>
                                     
-                                    <!-- **PERBAIKAN: TOMBOL LIHAT DETAIL - SELALU TAMPIL untuk status diterima -->
+                                    <!-- Tombol Lihat Detail -->
                                     <div class="mt-3 text-center">
-                                        <a href="detail.php?id=<?php echo $permintaan['id']; ?>" 
-                                           class="btn btn-detail btn-sm">
+                                        <a href="detail.php?id=<?php echo $permintaan_id; ?>" class="btn-detail">
                                             <i class="bi bi-eye"></i> Lihat Detail Lengkap
                                         </a>
                                     </div>
                                 </div>
-                            <?php elseif($permintaan['status'] == 'pending'): ?>
+                            <?php elseif($status == 'pending'): ?>
                                 <div class="alert alert-warning">
                                     <i class="bi bi-clock-history"></i>
-                                    Menunggu respons dari <?php echo $permintaan['ke_rs']; ?>
+                                    Menunggu respons dari <?php echo $ke_rs; ?>
                                 </div>
-                            <?php elseif($permintaan['status'] == 'ditolak'): ?>
+                            <?php elseif($status == 'ditolak'): ?>
                                 <div class="alert alert-danger">
                                     <i class="bi bi-x-circle"></i>
-                                    Ditolak oleh <?php echo $permintaan['ke_rs']; ?>
+                                    Ditolak oleh <?php echo $ke_rs; ?>
                                 </div>
-                            <?php endif; ?>
-                            
-                            <!-- Info Delete (jika tidak bisa dihapus) -->
-                            <?php if(!$can_delete && $permintaan['status'] == 'diterima' && !$is_expired): ?>
-                            <div class="mt-2 small text-muted text-center">
-                                <i class="bi bi-info-circle"></i> Data aktif, tunggu expired untuk menghapus
-                            </div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -489,11 +493,14 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
             <!-- Footer Info -->
             <?php if(!empty($permintaan_kita)): ?>
             <div class="mt-4 pt-3 border-top">
-                <div class="row">
+                <div class="row align-items-center">
                     <div class="col-md-6">
                         <small class="text-muted">
                             <i class="bi bi-info-circle"></i>
-                            Menampilkan <?php echo $counter; ?> permintaan 
+                            Menampilkan <?php echo $counter; ?> permintaan
+                            <?php if($data_diterima_counter > 0): ?>
+                                (<?php echo $data_diterima_counter; ?> dengan data)
+                            <?php endif; ?>
                         </small>
                     </div>
                     <div class="col-md-6 text-end">
@@ -509,7 +516,7 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
     
     <!-- Modal konfirmasi hapus -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title">
@@ -554,13 +561,8 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
         
         const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         modal.show();
+        return false; // Prevent default link behavior
     }
-    
-    // Auto refresh setiap 30 detik untuk update status
-    setInterval(() => {
-        console.log("🔄 Auto-refresh arsip...");
-        location.reload();
-    }, 30000);
     </script>
 </body>
 </html>

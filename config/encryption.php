@@ -105,4 +105,54 @@ function decryptFile($encrypted_data, $key) {
     
     return $decrypted !== false ? $decrypted : '';
 }
+
+// Fungsi decrypt khusus untuk RS penerima
+function decryptForRecipient($encrypted_data, $sender_rs_code, $recipient_rs_code) {
+    if (empty($encrypted_data)) {
+        return '';
+    }
+    
+    // Coba dengan kunci penerima dulu (paling umum)
+    $recipient_key = getHospitalKey($recipient_rs_code);
+    $decrypted = decryptData($encrypted_data, $recipient_key);
+    
+    if (!empty($decrypted)) {
+        $data = json_decode($decrypted, true);
+        if ($data && is_array($data)) {
+            return $decrypted;
+        }
+    }
+    
+    // Jika gagal, coba dengan kunci pengirim
+    $sender_key = getHospitalKey($sender_rs_code);
+    $decrypted = decryptData($encrypted_data, $sender_key);
+    
+    if (!empty($decrypted)) {
+        $data = json_decode($decrypted, true);
+        if ($data && is_array($data)) {
+            return $decrypted;
+        }
+    }
+    
+    return '';
+}
+
+// Fungsi untuk melihat file (view-only, no download)
+function viewFileOnly($file_data_base64, $file_type, $original_name) {
+    if (empty($file_data_base64)) {
+        return ['success' => false, 'error' => 'File data kosong'];
+    }
+    
+    $decoded = base64_decode($file_data_base64);
+    if ($decoded === false) {
+        return ['success' => false, 'error' => 'File data tidak valid'];
+    }
+    
+    return [
+        'success' => true,
+        'file_type' => $file_type,
+        'original_name' => $original_name,
+        'data' => $decoded
+    ];
+}
 ?>

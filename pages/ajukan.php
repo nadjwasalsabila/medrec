@@ -8,506 +8,476 @@ if(!isset($_SESSION['rs_kode'])){
 $rs_kode = $_SESSION['rs_kode'];
 $rs_nama = $_SESSION['rs_nama'];
 
-// Include config
 require_once '../config/database.php';
-require_once '../config/encryption.php';
 
+// Inisialisasi variabel
 $error = '';
 $success = '';
+$pasien_nama = '';
+$pasien_nik = '';
+$ke_rs = '';
+$urgensi = 'biasa';
+$keterangan = '';
 
-// Proses form jika disubmit
-if($_SERVER['REQUEST_METHOD'] == 'POST'){
-    
-    $new_permintaan = [ // PERBAIKAN: Definisikan variabel $new_permintaan
-        'dari_rs' => $rs_kode,
-        'ke_rs' => $_POST['ke_rs'],
-        'pasien_nik' => $_POST['nik'],
-        'pasien_nama' => $_POST['nama'],
-        'urgensi' => $_POST['urgensi'],
-        'keterangan' => $_POST['keterangan'],
-        'status' => 'pending',
-        'token_akses' => bin2hex(random_bytes(16)), // Token unik
-        'tanggal_permintaan' => date('Y-m-d'),
-        'tanggal_expired' => date('Y-m-d', strtotime('+14 days'))
-    ];
-    
-    // DEBUG: Tampilkan data yang akan dikirim
-    error_log("=== AJUKAN.PHP DEBUG ===");
-    error_log("Data to insert: " . json_encode($new_permintaan));
-
-    $result = createData('permintaan', $new_permintaan);
-
-    error_log("Create result: " . json_encode($result));
-
-    if($result['success']){
-        // Log histori
-        createData('histori', [
-            'permintaan_id' => $result['id'],
-            'rs_id' => $rs_kode,
-            'aksi' => 'mengajukan',
-            'keterangan' => 'Permintaan data pasien ' . $_POST['nama'] . ' ke ' . $_POST['ke_rs'],
-            'waktu' => date('Y-m-d H:i:s')
-        ]);
-        
-        $success = "✅ Permintaan berhasil dikirim! ID: " . $result['id'];
-        
-    } else {
-        // Tampilkan error detail
-        $error = "❌ Gagal mengirim permintaan: " . ($result['error'] ?? 'Unknown error');
-        error_log("Ajukan error: " . $error);
+// List RS tujuan (kecuali RS sendiri)
+$rs_tujuan_list = ['RS001', 'RS002', 'RS003'];
+$rs_tujuan_options = [];
+foreach($rs_tujuan_list as $rs) {
+    if($rs != $rs_kode) {
+        $rs_tujuan_options[] = $rs;
     }
 }
 
-// Ambil histori permintaan
-$histori = getData('permintaan', "dari_rs = '$rs_kode'", '-id', 10);
+// Proses form submission
+if(isset($_POST['submit_permintaan'])){
+    $pasien_nama = trim($_POST['pasien_nama'] ?? '');
+    $pasien_nik = trim($_POST['pasien_nik'] ?? '');
+    $ke_rs = $_POST['ke_rs'] ?? '';
+    $urgensi = $_POST['urgensi'] ?? 'biasa';
+    $keterangan = trim($_POST['keterangan'] ?? '');
+    
+    // Validasi input
+    if(empty($pasien_nama) || empty($pasien_nik) || empty($ke_rs) || empty($keterangan)) {
+        $error = "❌ Harap isi semua field yang wajib diisi!";
+    } elseif($ke_rs == $rs_kode) {
+        $error = "❌ Tidak dapat mengajukan permintaan ke RS sendiri!";
+    } elseif(!in_array($ke_rs, $rs_tujuan_options)) {
+        $error = "❌ RS tujuan tidak valid!";
+    } else {
+        // Simpan ke database
+        $result = createData('permintaan', [
+            'dari_rs' => $rs_kode,
+            'ke_rs' => $ke_rs,
+            'pasien_nama' => $pasien_nama,
+            'pasien_nik' => $pasien_nik,
+            'urgensi' => $urgensi,
+            'keterangan' => $keterangan,
+            'status' => 'pending',
+            'tanggal_permintaan' => date('Y-m-d H:i:s')
+        ]);
+        
+        if($result['success']){
+            // Simpan histori
+            createData('histori', [
+                'permintaan_id' => $result['id'],
+                'rs_id' => $rs_kode,
+                'aksi' => 'mengajukan_permintaan',
+                'keterangan' => 'Mengajukan permintaan data pasien ' . $pasien_nama . ' ke ' . $ke_rs,
+                'waktu' => date('Y-m-d H:i:s')
+            ]);
+            
+            $success = "✅ Permintaan berhasil diajukan ke RS " . $ke_rs . "!";
+            
+            // Reset form values untuk clear form
+            $pasien_nama = '';
+            $pasien_nik = '';
+            $ke_rs = '';
+            $urgensi = 'biasa';
+            $keterangan = '';
+        } else {
+            $error = "❌ Gagal mengajukan permintaan. Silakan coba lagi.";
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ajukan Permintaan</title>
+    <title>Ajukan Permintaan - <?php echo htmlspecialchars($rs_nama); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
-        .urgent { color: #dc3545; font-weight: bold; }
-        .biasa { color: #ffc107; }
-        .tidak-urgent { color: #0dcaf0; }
-        .badge-urgent { background: #dc3545; }
-        .badge-biasa { background: #ffc107; color: #000; }
-        .badge-tidak { background: #0dcaf0; }
-        .debug-info { 
-            background: #f8f9fa; 
-            border-left: 4px solid #dc3545; 
-            padding: 10px; 
-            margin: 10px 0;
-            font-size: 0.9em;
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s;
+            min-height: 100vh;
+            background: #f8f9fa;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0 !important;
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+        }
+        
+        .form-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+        }
+        
+        .form-header {
+            border-bottom: 2px solid #0d6efd;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .required-label::after {
+            content: " *";
+            color: #dc3545;
+        }
+        
+        .urgency-option {
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        
+        .urgency-option input[type="radio"] {
+            display: none;
+        }
+        
+        .urgency-option:hover {
+            border-color: #0d6efd;
+            background: #f0f8ff;
+        }
+        
+        .urgency-option input[type="radio"]:checked + .urgency-content {
+            border-color: #0d6efd;
+            background: #e7f1ff;
+        }
+        
+        .urgency-content {
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .urgency-icon {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        
+        .btn-submit {
+            background: linear-gradient(45deg, #0d6efd, #0b5ed7);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-submit:hover {
+            background: linear-gradient(45deg, #0b5ed7, #0a58ca);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3);
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #0dcaf0;
         }
     </style>
 </head>
 <body>
-    <!-- TAMBAHKAN INI: Include sidebar -->
+    <!-- Include sidebar -->
     <?php include '../components/sidebar.php'; ?>
     
-    <!-- TAMBAHKAN INI: Bungkus konten dengan main-content -->
+    <!-- Main Content -->
     <div class="main-content">
-        <div class="container mt-4">
+        <div class="container">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3><i class="bi bi-send-plus text-primary"></i> Ajukan Permintaan Data</h3>
+                    <p class="text-muted">Minta data rekam medis pasien ke RS lain</p>
+                </div>
+                <div>
+                    <a href="berkas.php" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Kembali ke Arsip
+                    </a>
+                </div>
+            </div>
             
-            <h3><i class="bi bi-send"></i> Ajukan Permintaan Data</h3>
-            <p class="text-muted">Dari: <strong><?php echo $rs_nama; ?></strong> (<?php echo $rs_kode; ?>)</p>
-            
-            <?php 
-            // Tampilkan debug info jika ada
-            if(isset($result) && !isset($success)): 
-            ?>
-            <div class="debug-info">
-                <strong>Debug Info:</strong><br>
-                <pre style="font-size: 0.8em;"><?php echo htmlspecialchars(print_r($result, true)); ?></pre>
+            <!-- HANYA SATU ALERT - Tidak double -->
+            <?php if(!empty($error)): ?>
+            <div class="alert alert-danger alert-dismissible fade show">
+                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Error</h5>
+                <?php echo $error; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <?php endif; ?>
             
-            <?php if(isset($success)): ?>
+            <?php if(!empty($success)): ?>
             <div class="alert alert-success alert-dismissible fade show">
+                <h5 class="alert-heading"><i class="bi bi-check-circle"></i> Sukses</h5>
                 <?php echo $success; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                <div class="mt-2">
+                <div class="mt-3">
                     <a href="ajukan.php" class="btn btn-sm btn-outline-success">Ajukan Lagi</a>
-                    <a href="../dashboard.php" class="btn btn-sm btn-outline-primary">Ke Dashboard</a>
+                    <a href="berkas.php" class="btn btn-sm btn-outline-primary ms-2">Lihat Arsip</a>
                 </div>
             </div>
             <?php endif; ?>
             
-            <?php if(isset($error)): ?>
-            <div class="alert alert-danger alert-dismissible fade show">
-                <strong>Error:</strong> <?php echo $error; ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                <div class="mt-2">
-                    <a href="test_connection.php" class="btn btn-sm btn-outline-danger">Test Connection</a>
-                    <button onclick="location.reload()" class="btn btn-sm btn-outline-warning">Refresh</button>
-                </div>
-            </div>
-            <?php endif; ?>
-            
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <i class="bi bi-clipboard-plus"></i> Form Pengajuan
-                </div>
-                <div class="card-body">
-                    <form method="POST" id="formAjukan" onsubmit="return confirmSubmit()">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">RS Tujuan <span class="text-danger">*</span></label>
-                                    <select name="ke_rs" class="form-select" required>
-                                        <option value="">-- Pilih Rumah Sakit --</option>
-                                        <?php 
-                                        $rs_list = ['RS001', 'RS002', 'RS003'];
-                                        foreach($rs_list as $rs){
-                                            if($rs != $rs_kode){
-                                                $selected = ($rs == ($_POST['ke_rs'] ?? '')) ? 'selected' : '';
-                                                echo "<option value='$rs' $selected>$rs</option>";
-                                            }
-                                        }
-                                        ?>
-                                    </select>
-                                    <div class="form-text">Pilih rumah sakit tujuan</div>
+            <!-- Form Card -->
+            <div class="row justify-content-center">
+                <div class="col-md-10">
+                    <div class="form-card">
+                        <div class="form-header">
+                            <h4><i class="bi bi-file-earmark-medical"></i> Form Permintaan Data</h4>
+                            <p class="text-muted mb-0">Isi data pasien dan alasan permintaan</p>
+                        </div>
+                        
+                        <form method="POST" action="" id="permintaanForm">
+                            <div class="row">
+                                <!-- Data Pasien -->
+                                <div class="col-md-6">
+                                    <div class="mb-4">
+                                        <h5><i class="bi bi-person-badge text-primary"></i> Data Pasien</h5>
+                                        <p class="text-muted small">Informasi identitas pasien</p>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label required-label">
+                                                <i class="bi bi-person"></i> Nama Lengkap Pasien
+                                            </label>
+                                            <input type="text" 
+                                                   class="form-control" 
+                                                   name="pasien_nama" 
+                                                   value="<?php echo htmlspecialchars($pasien_nama); ?>"
+                                                   placeholder="Masukkan nama lengkap pasien"
+                                                   required>
+                                            <div class="form-text">Nama sesuai dengan identitas resmi</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label required-label">
+                                                <i class="bi bi-card-text"></i> Nomor Induk Kependudukan (NIK)
+                                            </label>
+                                            <input type="text" 
+                                                   class="form-control" 
+                                                   name="pasien_nik" 
+                                                   value="<?php echo htmlspecialchars($pasien_nik); ?>"
+                                                   placeholder="Masukkan 16 digit NIK"
+                                                   required
+                                                   pattern="[0-9]{16}"
+                                                   maxlength="16">
+                                            <div class="form-text">16 digit angka NIK</div>
+                                        </div>
+                                    </div>
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <label class="form-label">NIK Pasien <span class="text-danger">*</span></label>
-                                    <input type="text" name="nik" class="form-control" 
-                                           value="<?php echo $_POST['nik'] ?? ''; ?>" 
-                                           required
-                                           pattern="[0-9]{16}"
-                                           maxlength="16"
-                                           placeholder="16 digit NIK (contoh: 3374065612050002)">
-                                    <div class="form-text">Harus 16 digit angka</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Nama Pasien <span class="text-danger">*</span></label>
-                                    <input type="text" name="nama" class="form-control" 
-                                           value="<?php echo $_POST['nama'] ?? ''; ?>" 
-                                           required
-                                           placeholder="Nama lengkap pasien">
-                                    <div class="form-text">Nama lengkap pasien sesuai KTP</div>
+                                <!-- RS Tujuan dan Urgensi -->
+                                <div class="col-md-6">
+                                    <div class="mb-4">
+                                        <h5><i class="bi bi-hospital text-info"></i> Tujuan & Urgensi</h5>
+                                        <p class="text-muted small">Pilih RS tujuan dan tingkat urgensi</p>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label required-label">
+                                                <i class="bi bi-buildings"></i> RS Tujuan
+                                            </label>
+                                            <select class="form-select" name="ke_rs" required>
+                                                <option value="">-- Pilih RS Tujuan --</option>
+                                                <?php foreach($rs_tujuan_options as $rs): ?>
+                                                <option value="<?php echo $rs; ?>" 
+                                                    <?php echo ($ke_rs == $rs) ? 'selected' : ''; ?>>
+                                                    <?php echo $rs; ?>
+                                                </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <div class="form-text">Pilih RS yang memiliki data pasien</div>
+                                        </div>
+                                        
+                                        <div class="mb-4">
+                                            <label class="form-label required-label">
+                                                <i class="bi bi-clock"></i> Tingkat Urgensi
+                                            </label>
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label class="urgency-option">
+                                                        <input type="radio" name="urgensi" value="urgent" 
+                                                            <?php echo ($urgensi == 'urgent') ? 'checked' : ''; ?> required>
+                                                        <div class="urgency-content">
+                                                            <div class="urgency-icon text-danger">
+                                                                <i class="bi bi-exclamation-triangle"></i>
+                                                            </div>
+                                                            <div class="fw-bold">Urgent</div>
+                                                            <small class="text-muted">Segera dibutuhkan</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="urgency-option">
+                                                        <input type="radio" name="urgensi" value="biasa" 
+                                                            <?php echo ($urgensi == 'biasa') ? 'checked' : ''; ?> required>
+                                                        <div class="urgency-content">
+                                                            <div class="urgency-icon text-warning">
+                                                                <i class="bi bi-clock"></i>
+                                                            </div>
+                                                            <div class="fw-bold">Biasa</div>
+                                                            <small class="text-muted">Bisa menunggu</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="urgency-option">
+                                                        <input type="radio" name="urgensi" value="tidak_urgent" 
+                                                            <?php echo ($urgensi == 'tidak_urgent') ? 'checked' : ''; ?> required>
+                                                        <div class="urgency-content">
+                                                            <div class="urgency-icon text-info">
+                                                                <i class="bi bi-calendar"></i>
+                                                            </div>
+                                                            <div class="fw-bold">Tidak Urgent</div>
+                                                            <small class="text-muted">Bisa ditunda</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Tingkat Urgensi <span class="text-danger">*</span></label>
-                                    <select name="urgensi" class="form-select" required>
-                                        <option value="urgent" class="urgent" 
-                                                <?php echo ($_POST['urgensi'] ?? '') == 'urgent' ? 'selected' : ''; ?>>
-                                            🚨 URGENT (Ditangani segera - max 2 jam)
-                                        </option>
-                                        <option value="biasa" 
-                                                <?php echo ($_POST['urgensi'] ?? 'biasa') == 'biasa' ? 'selected' : ''; ?>>
-                                            🟡 BIASA (1-2 hari kerja)
-                                        </option>
-                                        <option value="tidak_urgent"
-                                                <?php echo ($_POST['urgensi'] ?? '') == 'tidak_urgent' ? 'selected' : ''; ?>>
-                                            🔵 TIDAK URGENT (3-7 hari)
-                                        </option>
-                                    </select>
-                                    <div class="form-text">Pilih tingkat urgensi berdasarkan kebutuhan</div>
-                                </div>
+                            <!-- Keterangan -->
+                            <div class="mb-4">
+                                <h5><i class="bi bi-chat-left-text text-success"></i> Alasan Permintaan</h5>
+                                <p class="text-muted small">Jelaskan alasan permintaan data pasien</p>
                                 
                                 <div class="mb-3">
-                                    <label class="form-label">Keterangan / Alasan <span class="text-danger">*</span></label>
-                                    <textarea name="keterangan" class="form-control" rows="4" 
-                                              placeholder="Contoh: Pasien akan operasi jantung, butuh riwayat alergi dan penyakit sebelumnya..."
-                                              required><?php echo $_POST['keterangan'] ?? ''; ?></textarea>
-                                    <div class="form-text">Jelaskan alasan permintaan data secara detail</div>
-                                </div>
-                                
-                                <div class="alert alert-warning">
-                                    <i class="bi bi-exclamation-triangle"></i>
-                                    <strong>Perhatian Penting:</strong><br>
-                                    1. Data akan <strong>expired dalam waktu tertentu</strong> setelah dikirim oleh RS tujuan<br>
-                                    2. Permintaan <strong>TIDAK BISA DIEDIT</strong> setelah dikirim<br>
-                                    3. Pastikan data pasien sudah benar sebelum mengirim
+                                    <label class="form-label required-label">
+                                        <i class="bi bi-file-text"></i> Keterangan / Alasan Permintaan
+                                    </label>
+                                    <textarea class="form-control" 
+                                              name="keterangan" 
+                                              rows="4" 
+                                              placeholder="Contoh: Pasien membutuhkan tindakan lanjutan, butuh riwayat penyakit sebelumnya, dll."
+                                              required><?php echo htmlspecialchars($keterangan); ?></textarea>
+                                    <div class="form-text">
+                                        Jelaskan secara jelas mengapa data pasien dibutuhkan
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                            <div>
-                                <a href="../dashboard.php" class="btn btn-secondary">
-                                    <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
-                                </a>
-                                <button type="reset" class="btn btn-outline-secondary">
-                                    <i class="bi bi-eraser"></i> Reset Form
-                                </button>
+                            
+                            <!-- Informasi Penting -->
+                            <div class="info-box">
+                                <h6><i class="bi bi-info-circle text-info"></i> Informasi Penting</h6>
+                                <ul class="mb-0 small">
+                                    <li>Permintaan akan dikirim ke RS tujuan untuk ditinjau</li>
+                                    <li>RS tujuan dapat menerima atau menolak permintaan</li>
+                                    <li>Data yang dikirim akan terenkripsi untuk keamanan</li>
+                                    <li>Proses dapat memakan waktu 1-3 hari kerja</li>
+                                    <li>Status permintaan dapat dipantau di menu <strong>Arsip Permintaan</strong></li>
+                                </ul>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-send-check"></i> Kirim Permintaan
-                            </button>
-                        </div>
-                        
-                        <div class="mt-3 text-muted small">
-                            <i class="bi bi-info-circle"></i>
-                            Permintaan akan masuk ke sistem dan dapat dilihat oleh RS tujuan dalam waktu singkat.
-                        </div>
-                    </form>
+                            
+                            <!-- Form Actions -->
+                            <div class="d-flex justify-content-between mt-4 pt-4 border-top">
+                                <div>
+                                    <small class="text-muted">
+                                        <i class="bi bi-shield-check"></i> Data akan dienkripsi end-to-end
+                                    </small>
+                                </div>
+                                <div>
+                                    <button type="reset" class="btn btn-outline-secondary me-2">
+                                        <i class="bi bi-x-circle"></i> Reset Form
+                                    </button>
+                                    <button type="submit" name="submit_permintaan" class="btn-submit">
+                                        <i class="bi bi-send-check"></i> Ajukan Permintaan
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
             
-            <!-- Histori Permintaan - PERBAIKAN STRUKTUR HTML -->
-            <div class="card mt-4">
-                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                    <div>
-                        <i class="bi bi-clock-history"></i> Histori Permintaan Anda
-                        <small class="ms-2">(RS: <?php echo $rs_kode; ?>)</small>
-                    </div>
-                    <div>
-                        <span class="badge bg-light text-dark">
-                            <?php 
-                            // DEBUG: Tampilkan count
-                            error_log("Histori count for $rs_kode: " . count($histori));
-                            echo count($histori) . " permintaan";
-                            ?>
-                        </span>
-                        <button class="btn btn-sm btn-outline-light ms-2" onclick="refreshHistori()">
-                            <i class="bi bi-arrow-clockwise"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <?php 
-                    // DEBUG: Tampilkan raw data
-                    if(empty($histori)): 
-                        echo "<!-- DEBUG: Histori array is empty -->";
-                    ?>
-                        <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle"></i> 
-                            Belum ada permintaan yang diajukan.
-                            <?php 
-                            // Cek file data
-                            $data_file = '../data_permintaan.json';
-                            if(file_exists($data_file)) {
-                                $content = file_get_contents($data_file);
-                                $all_data = json_decode($content, true);
-                                echo "<br><small class='text-muted'>Total data dalam file: " . (is_array($all_data) ? count($all_data) : 0) . " records</small>";
-                            }
-                            ?>
-                        </div>
-                    <?php else: ?>
-                        <!-- DEBUG: Tampilkan info -->
-                        <div class="alert alert-info alert-sm mb-3">
-                            <small>
-                                <i class="bi bi-info-circle"></i> 
-                                Menampilkan <?php echo count($histori); ?> permintaan untuk <?php echo $rs_kode; ?>
-                            </small>
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-hover table-sm">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th width="15%">Tanggal</th>
-                                        <th width="10%">RS Tujuan</th>
-                                        <th width="20%">Nama Pasien</th>
-                                        <th width="12%">Urgensi</th>
-                                        <th width="13%">Status</th>
-                                        <th width="15%">Expired</th>
-                                        <th width="15%">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach($histori as $h): 
-                                        $today = date('Y-m-d');
-                                        $expired = $h['tanggal_expired'] ?? '';
-                                        $is_expired = ($expired && $expired < $today && $h['status'] == 'diterima');
-                                    ?>
-                                    <tr>
-                                        <td>
-                                            <small><?php echo date('d/m/Y', strtotime($h['tanggal_permintaan'] ?? $h['created_at'])); ?></small>
-                                            <br>
-                                            <small class="text-muted"><?php echo date('H:i', strtotime($h['created_at'] ?? $h['tanggal_permintaan'])); ?></small>
-                                        </td>
-                                        <td><strong class="text-primary"><?php echo $h['ke_rs'] ?? 'N/A'; ?></strong></td>
-                                        <td>
-                                            <div class="fw-bold"><?php echo $h['pasien_nama'] ?? 'N/A'; ?></div>
-                                            <small class="text-muted">
-                                                NIK: <?php echo isset($h['pasien_nik']) ? substr($h['pasien_nik'], 0, 8) . '...' : 'N/A'; ?>
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <?php 
-                                            $badge_class = '';
-                                            $icon = '';
-                                            $urgensi = $h['urgensi'] ?? 'biasa';
-                                            if($urgensi == 'urgent') {
-                                                $badge_class = 'bg-danger';
-                                                $icon = 'bi-alarm';
-                                            } elseif($urgensi == 'biasa') {
-                                                $badge_class = 'bg-warning text-dark';
-                                                $icon = 'bi-clock';
-                                            } else {
-                                                $badge_class = 'bg-info';
-                                                $icon = 'bi-calendar';
-                                            }
-                                            ?>
-                                            <span class="badge <?php echo $badge_class; ?>">
-                                                <i class="bi <?php echo $icon; ?>"></i>
-                                                <?php echo strtoupper($urgensi); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <?php 
-                                            $status_color = 'secondary';
-                                            $status_icon = 'bi-question-circle';
-                                            $status = $h['status'] ?? 'pending';
-                                            
-                                            if($status == 'pending') {
-                                                $status_color = 'warning';
-                                                $status_icon = 'bi-clock';
-                                            } elseif($status == 'diterima') {
-                                                $status_color = 'success';
-                                                $status_icon = 'bi-check-circle';
-                                            } elseif($status == 'ditolak') {
-                                                $status_color = 'danger';
-                                                $status_icon = 'bi-x-circle';
-                                            } elseif($status == 'expired') {
-                                                $status_color = 'dark';
-                                                $status_icon = 'bi-hourglass-bottom';
-                                            }
-                                            ?>
-                                            <span class="badge bg-<?php echo $status_color; ?>">
-                                                <i class="bi <?php echo $status_icon; ?>"></i>
-                                                <?php echo ucfirst($status); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <?php 
-                                            if(!empty($expired)) {
-                                                $expired_date = date('d/m/Y', strtotime($expired));
-                                                if($is_expired) {
-                                                    echo '<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ' . $expired_date . '</span>';
-                                                    echo '<br><small class="text-danger">(EXPIRED)</small>';
-                                                } else {
-                                                    echo $expired_date;
-                                                    $diff = (strtotime($expired) - strtotime($today)) / (60 * 60 * 24);
-                                                    if($diff <= 3) {
-                                                        echo '<br><small class="text-warning">(' . intval($diff) . ' hari lagi)</small>';
-                                                    }
-                                                }
-                                            } else {
-                                                echo '<span class="text-muted">-</span>';
-                                            }
-                                            ?>
-                                        </td>
-                                        <td>
-                                            <?php if($status == 'pending'): ?>
-                                                <span class="badge bg-secondary">Menunggu</span>
-                                            <?php elseif($status == 'diterima' && !$is_expired): ?>
-                                                <span class="badge bg-success">Aktif</span>
-                                            <?php elseif($is_expired): ?>
-                                                <span class="badge bg-dark">Kadaluarsa</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary"><?php echo ucfirst($status); ?></span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="mt-3 text-center">
-                            <small class="text-muted">
-                                Menampilkan <?php echo count($histori); ?> permintaan terakhir
-                            </small>
-                        </div>
-                    <?php endif; ?>
-                </div>
+            <!-- Footer -->
+            <div class="mt-4 pt-3 border-top text-center">
+                <small class="text-muted">
+                    <i class="bi bi-lock"></i> Semua komunikasi dan data dienkripsi untuk keamanan pasien
+                </small>
             </div>
-            <!-- END Histori Permintaan -->
-            
         </div>
-    </div> <!-- End main-content -->
+    </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    function confirmSubmit() {
-        // Validasi NIK
-        const nikInput = document.querySelector('input[name="nik"]');
-        const nikValue = nikInput.value.trim();
+    // Form validation and confirmation
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('permintaanForm');
         
-        if (nikValue.length !== 16 || !/^\d+$/.test(nikValue)) {
-            alert('NIK harus 16 digit angka!');
-            nikInput.focus();
-            return false;
-        }
+        form.addEventListener('submit', function(e) {
+            // Validasi NIK (16 digit)
+            const nikInput = document.querySelector('input[name="pasien_nik"]');
+            if(nikInput.value.length !== 16 || !/^\d+$/.test(nikInput.value)) {
+                e.preventDefault();
+                alert('NIK harus berupa 16 digit angka!');
+                nikInput.focus();
+                return false;
+            }
+            
+            // Validasi nama tidak kosong
+            const namaInput = document.querySelector('input[name="pasien_nama"]');
+            if(namaInput.value.trim().length < 3) {
+                e.preventDefault();
+                alert('Nama pasien minimal 3 karakter!');
+                namaInput.focus();
+                return false;
+            }
+            
+            // Confirmation dialog
+            const rsTujuan = document.querySelector('select[name="ke_rs"]').value;
+            const pasienNama = namaInput.value;
+            const urgensi = document.querySelector('input[name="urgensi"]:checked').value;
+            
+            const urgensiText = {
+                'urgent': 'URGENT (Segera dibutuhkan)',
+                'biasa': 'BIASA (Bisa menunggu)',
+                'tidak_urgent': 'TIDAK URGENT (Bisa ditunda)'
+            };
+            
+            const confirmMsg = `Konfirmasi Permintaan:\n\n` +
+                              `Pasien: ${pasienNama}\n` +
+                              `RS Tujuan: ${rsTujuan}\n` +
+                              `Urgensi: ${urgensiText[urgensi]}\n\n` +
+                              `Apakah data yang diisi sudah benar?`;
+            
+            if(!confirm(confirmMsg)) {
+                e.preventDefault();
+                return false;
+            }
+        });
         
-        // Validasi Nama
-        const namaInput = document.querySelector('input[name="nama"]');
-        if (namaInput.value.trim().length < 3) {
-            alert('Nama pasien minimal 3 karakter!');
-            namaInput.focus();
-            return false;
-        }
+        // Auto format NIK
+        const nikInput = document.querySelector('input[name="pasien_nik"]');
+        nikInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '').slice(0, 16);
+        });
         
-        // Validasi Keterangan
-        const keteranganInput = document.querySelector('textarea[name="keterangan"]');
-        if (keteranganInput.value.trim().length < 10) {
-            alert('Keterangan minimal 10 karakter!');
-            keteranganInput.focus();
-            return false;
-        }
+        // Auto capitalize nama
+        const namaInput = document.querySelector('input[name="pasien_nama"]');
+        namaInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
         
-        // Konfirmasi
-        const nama = namaInput.value;
-        const rsTujuan = document.querySelector('select[name="ke_rs"]').value;
-        const urgensi = document.querySelector('select[name="urgensi"]').value;
-        const keterangan = keteranganInput.value.substring(0, 50) + '...';
-        
-        const urgensiText = {
-            'urgent': '🚨 URGENT (Ditangani segera)',
-            'biasa': '🟡 BIASA (1-2 hari)', 
-            'tidak_urgent': '🔵 TIDAK URGENT (3-7 hari)'
-        };
-        
-        const confirmMsg = `⚠️ KONFIRMASI PENGAJUAN ⚠️\n\n` +
-                          `📋 Detail Permintaan:\n` +
-                          `────────────────────\n` +
-                          `Nama Pasien: ${nama}\n` +
-                          `RS Tujuan: ${rsTujuan}\n` +
-                          `Urgensi: ${urgensiText[urgensi]}\n` +
-                          `Keterangan: ${keterangan}\n\n` +
-                          `❌ PERHATIAN:\n` +
-                          `• Permintaan TIDAK BISA diedit setelah dikirim\n` +
-                          `• Pastikan data sudah benar\n` +
-                          `• Data akan expired dalam waktu yang ditentukan\n\n` +
-                          `Apakah Anda yakin ingin mengirim permintaan ini?`;
-        
-        return confirm(confirmMsg);
-    }
-    
-    // Auto-capitalize RS code
-    document.querySelector('select[name="ke_rs"]').addEventListener('change', function(e) {
-        if(e.target.value) {
-            e.target.value = e.target.value.toUpperCase();
-        }
+        // Style urgency options on click
+        document.querySelectorAll('.urgency-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.urgency-option').forEach(opt => {
+                    opt.querySelector('.urgency-content').style.borderColor = 'transparent';
+                    opt.querySelector('.urgency-content').style.background = 'transparent';
+                });
+                
+                this.querySelector('.urgency-content').style.borderColor = '#0d6efd';
+                this.querySelector('.urgency-content').style.background = '#e7f1ff';
+            });
+        });
     });
-    
-    // Format NIK input
-    document.querySelector('input[name="nik"]').addEventListener('input', function(e) {
-        this.value = this.value.replace(/\D/g, '').substring(0, 16);
-    });
-    
-    // Auto-capitalize nama
-    document.querySelector('input[name="nama"]').addEventListener('input', function(e) {
-        this.value = this.value.toUpperCase();
-    });
-    
-    // Show character count for keterangan
-    const keteranganTextarea = document.querySelector('textarea[name="keterangan"]');
-    const charCount = document.createElement('div');
-    charCount.className = 'form-text text-end';
-    charCount.id = 'charCount';
-    keteranganTextarea.parentNode.appendChild(charCount);
-    
-    keteranganTextarea.addEventListener('input', function() {
-        const length = this.value.length;
-        charCount.textContent = `${length} karakter (minimal 10)`;
-        if (length < 10) {
-            charCount.className = 'form-text text-end text-danger';
-        } else {
-            charCount.className = 'form-text text-end text-success';
-        }
-    });
-    
-    // Refresh histori
-    function refreshHistori() {
-        if(confirm("Refresh histori permintaan?")) {
-            location.reload();
-        }
-    }
-    
-    // Trigger initial count
-    keteranganTextarea.dispatchEvent(new Event('input'));
     </script>
 </body>
 </html>

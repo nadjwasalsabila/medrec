@@ -1,3 +1,5 @@
+
+
 <?php
 session_start();
 if(!isset($_SESSION['rs_kode'])){
@@ -11,6 +13,12 @@ $rs_nama = $_SESSION['rs_nama'];
 require_once '../config/database.php';
 require_once '../config/encryption.php';
 
+// **HAPUS DEBUG LOGGING - Tidak perlu tampilkan di user**
+// if(!isset($_SESSION['rs_key'])) {
+//     $_SESSION['rs_key'] = getHospitalKey($rs_kode);
+// }
+
+// **HAPUS: Ambil permintaan yang KITA AJUKAN**
 $permintaan_kita_raw = getData('permintaan', "dari_rs = '$rs_kode'", 'id DESC');
 
 // **PERBAIKAN: Filter hanya data yang valid dengan lengkap**
@@ -87,7 +95,20 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(180deg, #2c3e50, #1a2530);
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
         .main-content {
+            margin-top: 60px;
             margin-left: 250px;
             padding: 20px;
             transition: margin-left 0.3s;
@@ -185,9 +206,28 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
             border-radius: 15px;
             font-size: 0.85em;
         }
+        .delete-btn-inline {
+    color: #dc3545;
+    font-size: 1.1em;
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.delete-btn-inline:hover {
+    opacity: 1;
+    color: #dc3545;
+    transform: scale(1.1);
+}
+
     </style>
 </head>
 <body>
+    <div class="topbar">
+        <button id="sidebarToggle" class="btn btn-secondary">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="ms-auto badge bg-linear-gradient(180deg, #2c3e50, #1a2530)">Sistem Aktif</div>
+    </div>
     <!-- Include sidebar -->
     <?php include '../components/sidebar.php'; ?>
     
@@ -314,32 +354,34 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                     <div class="col-md-6">
                         <div class="request-card position-relative">
                             
-                            <!-- Tombol Hapus -->
-                            <?php if($can_delete): ?>
-                            <a href="#" class="delete-btn" 
-                               onclick="return confirmDelete(<?php echo $permintaan_id; ?>, '<?php echo $pasien_nama; ?>', '<?php echo $ke_rs; ?>')"
-                               title="Hapus permintaan">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                            <?php endif; ?>
-                            
                             <!-- Header -->
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <h5 class="mb-1 patient-info">
-                                        <i class="bi bi-person-circle"></i>
-                                        <?php echo $pasien_nama; ?>
-                                    </h5>
-                                    <p class="mb-1 text-muted small">
-                                        <i class="bi bi-card-text"></i> NIK: <?php echo $pasien_nik; ?>
-                                    </p>
-                                </div>
-                                <div class="text-end">
-                                    <span class="rs-badge">
-                                        <i class="bi bi-hospital"></i> <?php echo $ke_rs; ?>
-                                    </span>
-                                </div>
-                            </div>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h5 class="mb-1 patient-info">
+            <i class="bi bi-person-circle"></i>
+            <?php echo $pasien_nama; ?>
+        </h5>
+        <p class="mb-1 text-muted small">
+            <i class="bi bi-card-text"></i> NIK: <?php echo $pasien_nik; ?>
+        </p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <span class="rs-badge">
+            <i class="bi bi-hospital"></i> <?php echo $ke_rs; ?>
+        </span>
+
+        <?php if($can_delete): ?>
+        <a href="#"
+           class="delete-btn-inline"
+           onclick="return confirmDelete(<?php echo $permintaan_id; ?>, '<?php echo $pasien_nama; ?>', '<?php echo $ke_rs; ?>')"
+           title="Hapus permintaan">
+            <i class="bi bi-trash"></i>
+        </a>
+        <?php endif; ?>
+    </div>
+</div>
+
                             
                             <!-- Informasi Permintaan -->
                             <div class="mb-3">
@@ -462,11 +504,9 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                     
                                     <!-- Tombol Lihat Detail -->
                                     <div class="mt-3 text-center">
-                                        
-                                    <!-- **OPTION 1: Relatif path dari pages/ ke pages/detail.php** -->
-                                    <a href="detail.php?id=<?php echo $permintaan_id; ?>" class="btn-detail">
-                                        <i class="bi bi-eye"></i> Lihat Detail Lengkap
-                                    </a>
+                                        <a href="detail.php?id=<?php echo $permintaan_id; ?>" class="btn-detail">
+                                            <i class="bi bi-eye"></i> Lihat Detail Lengkap
+                                        </a>
                                     </div>
                                 </div>
                             <?php elseif($status == 'pending'): ?>

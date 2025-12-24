@@ -54,7 +54,20 @@ $recent_permintaan = array_slice($permintaan_kita, 0, 5);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(180deg, #2c3e50, #1a2530);
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
         .main-content {
+            margin-top: 60px;
             margin-left: 250px;
             padding: 20px;
             transition: margin-left 0.3s;
@@ -150,6 +163,12 @@ $recent_permintaan = array_slice($permintaan_kita, 0, 5);
     </style>
 </head>
 <body>
+    <div class="topbar">
+        <button id="sidebarToggle" class="btn btn-secondary">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="ms-auto badge bg-linear-gradient(180deg, #2c3e50, #1a2530)">Sistem Aktif</div>
+    </div>
     <!-- Include sidebar -->
     <?php include 'components/sidebar.php'; ?>
     

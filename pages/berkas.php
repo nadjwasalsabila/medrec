@@ -462,10 +462,11 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                     
                                     <!-- Tombol Lihat Detail -->
                                     <div class="mt-3 text-center">
+                                        
                                     <!-- **OPTION 1: Relatif path dari pages/ ke pages/detail.php** -->
                                     <a href="detail.php?id=<?php echo $permintaan_id; ?>" class="btn-detail">
-                                    <i class="bi bi-eye"></i> Lihat Detail Lengkap
-    </a>
+                                        <i class="bi bi-eye"></i> Lihat Detail Lengkap
+                                    </a>
                                     </div>
                                 </div>
                             <?php elseif($status == 'pending'): ?>

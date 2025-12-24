@@ -11,8 +11,8 @@ $rs_nama = $_SESSION['rs_nama'];
 require_once '../config/database.php';
 require_once '../config/encryption.php';
 
-// Pastikan ID ada
-if(!isset($_GET['id'])) {
+// **PERBAIKAN: Pastikan ID ada dan valid**
+if(!isset($_GET['id']) || empty($_GET['id'])) {
     $_SESSION['error'] = "ID permintaan tidak ditemukan";
     header('Location: berkas.php');
     exit;
@@ -20,18 +20,29 @@ if(!isset($_GET['id'])) {
 
 $permintaan_id = intval($_GET['id']);
 
-// Ambil data permintaan
-$all_permintaan = getData('permintaan', "id = '$permintaan_id'", '', 1);
+// **DEBUG: Aktifkan untuk troubleshooting**
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-if(empty($all_permintaan)) {
+// Ambil semua permintaan untuk debugging
+$all_permintaan = getData('permintaan', '', 'id DESC');
+$permintaan = null;
+
+// Cari permintaan berdasarkan ID
+foreach($all_permintaan as $p) {
+    if(isset($p['id']) && $p['id'] == $permintaan_id) {
+        $permintaan = $p;
+        break;
+    }
+}
+
+if(!$permintaan) {
     $_SESSION['error'] = "❌ Permintaan dengan ID $permintaan_id tidak ditemukan";
     header('Location: berkas.php');
     exit;
 }
 
-$permintaan = $all_permintaan[0];
-
-// Cek kepemilikan
+// **VERIFIKASI: Pastikan ini permintaan KITA (penerima)**
 if($permintaan['dari_rs'] != $rs_kode) {
     $_SESSION['error'] = "❌ Akses ditolak! Ini bukan permintaan Anda.";
     header('Location: berkas.php');
@@ -56,43 +67,83 @@ if($permintaan['status'] != 'diterima') {
     exit;
 }
 
-// **PERBAIKAN CRITICAL: Proses decrypt dengan benar**
+// **PROSES DECRYPT DATA**
 $response_data = null;
 $has_file = false;
 $file_data = null;
 $decrypt_error = '';
 $file_preview_available = false;
+$file_preview_html = '';
 
 if(!empty($permintaan['data_dikirim'])) {
-    // **GUNAKAN FUNGSI BARU: decrypt khusus penerima**
-    $decrypted = decryptForRecipient(
-        $permintaan['data_dikirim'],
-        $permintaan['ke_rs'],  // RS pengirim
-        $rs_kode               // RS penerima (kita)
-    );
-    
-    if(!empty($decrypted)) {
-        $response_data = json_decode($decrypted, true);
+    // **PERBAIKAN: Fungsi decrypt yang lebih baik**
+    function tryDecryptData($encrypted_data, $rs_kode, $ke_rs) {
+        // Coba dengan kunci penerima (kita)
+        $our_key = getHospitalKey($rs_kode);
+        $decrypted = decryptData($encrypted_data, $our_key);
         
-        if($response_data && is_array($response_data)) {
-            // Debug info
-            error_log("✅ Berhasil decrypt data untuk RS: $rs_kode");
-            
-            if(isset($response_data['file_data'])) {
-                $has_file = true;
-                $file_data = $response_data['file_data'];
-                
-                // Cek apakah file bisa dipreview
-                $allowed_preview_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain'];
-                if(isset($file_data['file_type']) && in_array($file_data['file_type'], $allowed_preview_types)) {
-                    $file_preview_available = true;
+        if(!empty($decrypted)) {
+            $data = json_decode($decrypted, true);
+            if($data && is_array($data)) {
+                return ['success' => true, 'data' => $data, 'key_used' => 'penerima'];
+            }
+        }
+        
+        // Coba dengan kunci pengirim
+        $sender_key = getHospitalKey($ke_rs);
+        $decrypted = decryptData($encrypted_data, $sender_key);
+        
+        if(!empty($decrypted)) {
+            $data = json_decode($decrypted, true);
+            if($data && is_array($data)) {
+                return ['success' => true, 'data' => $data, 'key_used' => 'pengirim'];
+            }
+        }
+        
+        // Coba semua kunci yang mungkin
+        $possible_keys = ['key-rs001', 'key-rs002', 'key-rs003', 'default-key-12345'];
+        foreach($possible_keys as $key) {
+            $decrypted = decryptData($encrypted_data, $key);
+            if(!empty($decrypted)) {
+                $data = json_decode($decrypted, true);
+                if($data && is_array($data)) {
+                    return ['success' => true, 'data' => $data, 'key_used' => 'fallback'];
                 }
             }
-        } else {
-            $decrypt_error = "Data tidak valid setelah decrypt";
+        }
+        
+        return ['success' => false, 'error' => 'Gagal decrypt dengan semua kunci'];
+    }
+    
+    $decrypt_result = tryDecryptData($permintaan['data_dikirim'], $rs_kode, $permintaan['ke_rs']);
+    
+    if($decrypt_result['success']) {
+        $response_data = $decrypt_result['data'];
+        
+        if(isset($response_data['file_data'])) {
+            $has_file = true;
+            $file_data = $response_data['file_data'];
+            
+            // Generate preview berdasarkan tipe file
+            if(isset($file_data['file_type']) && isset($file_data['file_data_base64'])) {
+                $file_type = $file_data['file_type'];
+                $base64_data = $file_data['file_data_base64'];
+                
+                if(strpos($file_type, 'image/') === 0) {
+                    $file_preview_available = true;
+                    $file_preview_html = '<img src="data:' . $file_type . ';base64,' . $base64_data . '" class="img-fluid" style="max-height: 400px;" alt="Preview">';
+                } elseif($file_type == 'application/pdf') {
+                    $file_preview_available = true;
+                    $file_preview_html = '<iframe src="data:application/pdf;base64,' . $base64_data . '" class="pdf-preview" style="width: 100%; height: 400px;"></iframe>';
+                } elseif(strpos($file_type, 'text/') === 0) {
+                    $file_preview_available = true;
+                    $text_content = base64_decode($base64_data);
+                    $file_preview_html = '<div class="text-preview">' . htmlspecialchars(substr($text_content, 0, 5000)) . '</div>';
+                }
+            }
         }
     } else {
-        $decrypt_error = "Gagal mendecrypt data dengan kunci yang tersedia";
+        $decrypt_error = $decrypt_result['error'];
     }
 } else {
     $decrypt_error = "Tidak ada data yang dikirim";
@@ -106,30 +157,73 @@ if(!empty($permintaan['data_dikirim'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
-        /* ... (CSS tetap sama) ... */
+        .main-content { 
+            margin-left: 250px; 
+            padding: 20px; 
+            min-height: 100vh; 
+            background: #f8f9fa;
+        }
         
-        /* TAMBAH CSS UNTUK FILE PREVIEW */
+        @media (max-width: 768px) { 
+            .main-content { 
+                margin-left: 0 !important; 
+                padding: 15px;
+            } 
+        }
+        
+        .card-header { 
+            background: linear-gradient(45deg, #0d6efd 0%, #0dcaf0 100%); 
+            color: white; 
+        }
+        
+        .patient-card {
+            border-left: 5px solid #0d6efd;
+            border-radius: 10px;
+        }
+        
+        .data-card {
+            border-left: 5px solid #198754;
+            border-radius: 10px;
+        }
+        
+        .info-box { 
+            background: white; 
+            border-radius: 8px; 
+            padding: 15px; 
+            margin: 10px 0;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .file-info { 
+            border-left: 4px solid #0dcaf0; 
+            padding-left: 15px; 
+        }
+        
+        .medical-history { 
+            white-space: pre-wrap; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
         .file-preview-container {
             border: 1px solid #dee2e6;
             border-radius: 8px;
             padding: 15px;
-            margin: 10px 0;
+            margin-top: 10px;
             background: white;
-            max-height: 500px;
-            overflow: auto;
         }
         
         .pdf-preview {
             width: 100%;
             height: 400px;
             border: none;
-        }
-        
-        .image-preview {
-            max-width: 100%;
-            max-height: 400px;
-            display: block;
-            margin: 0 auto;
         }
         
         .text-preview {
@@ -142,20 +236,30 @@ if(!empty($permintaan['data_dikirim'])) {
             overflow-y: auto;
         }
         
-        .unsupported-file {
-            padding: 30px;
-            text-align: center;
-            color: #6c757d;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        
         .view-only-badge {
             background: #6c757d;
             color: white;
             padding: 3px 10px;
             border-radius: 15px;
             font-size: 0.8em;
+        }
+        
+        .btn-back {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-back:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
         }
     </style>
 </head>
@@ -174,19 +278,98 @@ if(!empty($permintaan['data_dikirim'])) {
             </div>
             <?php endif; ?>
             
+            <!-- Debug Info (Hanya tampil jika ada error) -->
+            <?php if(!empty($decrypt_error) && $decrypt_error != "Tidak ada data yang dikirim"): ?>
+            <div class="alert alert-warning">
+                <h6><i class="bi bi-exclamation-triangle"></i> Debug Info</h6>
+                <p class="mb-1 small">ID: <?php echo $permintaan_id; ?></p>
+                <p class="mb-1 small">RS Anda: <?php echo $rs_kode; ?></p>
+                <p class="mb-1 small">RS Pengirim: <?php echo $permintaan['ke_rs']; ?></p>
+                <p class="mb-0 small">Error: <?php echo htmlspecialchars($decrypt_error); ?></p>
+            </div>
+            <?php endif; ?>
+            
             <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h3><i class="bi bi-file-earmark-medical"></i> Detail Data Medis</h3>
                     <p class="text-muted">
-                        Mode: <span class="view-only-badge"><i class="bi bi-eye"></i> VIEW-ONLY</span>
-                        | Expired: <?php echo date('d/m/Y', strtotime($expired_date)); ?>
+                        <span class="view-only-badge"><i class="bi bi-eye"></i> VIEW-ONLY</span>
+                        | ID: #<?php echo $permintaan_id; ?>
+                        | Expired: <?php echo $expired_date ? date('d/m/Y', strtotime($expired_date)) : 'Tidak ditentukan'; ?>
                     </p>
                 </div>
                 <div>
-                    <a href="berkas.php" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Kembali ke Arsip
+                    <a href="berkas.php" class="btn-back">
+                        <i class="bi bi-arrow-left"></i> Kembali
                     </a>
+                </div>
+            </div>
+            
+            <!-- Patient Info Card -->
+            <div class="card mb-4 shadow-sm patient-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-badge"></i> Informasi Pasien</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <h6><i class="bi bi-person text-primary"></i> Identitas Pasien</h6>
+                                <p class="mb-1"><strong>Nama:</strong> <?php echo htmlspecialchars($permintaan['pasien_nama']); ?></p>
+                                <p class="mb-0"><strong>NIK:</strong> <?php echo htmlspecialchars($permintaan['pasien_nik']); ?></p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <h6><i class="bi bi-hospital text-info"></i> Informasi RS</h6>
+                                <p class="mb-1"><strong>RS Pengirim Data:</strong> <?php echo $permintaan['ke_rs']; ?></p>
+                                <p class="mb-0"><strong>Status:</strong> 
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> DITERIMA
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <h6><i class="bi bi-calendar-check text-success"></i> Waktu</h6>
+                                <p class="mb-1"><strong>Tanggal Permintaan:</strong><br>
+                                    <?php echo date('d F Y H:i', strtotime($permintaan['tanggal_permintaan'])); ?></p>
+                                <?php if(isset($permintaan['tanggal_dikirim'])): ?>
+                                <p class="mb-0"><strong>Dikirim pada:</strong><br>
+                                    <?php echo date('d F Y H:i', strtotime($permintaan['tanggal_dikirim'])); ?></p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <h6><i class="bi bi-flag text-warning"></i> Urgensi</h6>
+                                <?php 
+                                $urgensi_class = [
+                                    'urgent' => 'danger',
+                                    'biasa' => 'warning', 
+                                    'tidak_urgent' => 'info'
+                                ];
+                                $urgensi = $permintaan['urgensi'] ?? 'biasa';
+                                ?>
+                                <span class="badge bg-<?php echo $urgensi_class[$urgensi] ?? 'secondary'; ?> p-2">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    <?php echo strtoupper($urgensi); ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6><i class="bi bi-chat-left-text text-secondary"></i> Alasan Permintaan</h6>
+                        <div class="alert alert-light border rounded p-3">
+                            <?php echo nl2br(htmlspecialchars($permintaan['keterangan'] ?? 'Tidak ada keterangan')); ?>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -208,6 +391,9 @@ if(!empty($permintaan['data_dikirim'])) {
                         <div class="alert alert-danger">
                             <h5><i class="bi bi-exclamation-triangle"></i> Gagal Membuka Data</h5>
                             <p class="mb-2"><?php echo htmlspecialchars($decrypt_error); ?></p>
+                            <p class="small text-muted">
+                                Data mungkin dienkripsi dengan kunci yang berbeda atau format tidak sesuai.
+                            </p>
                         </div>
                         
                     <?php elseif($response_data): ?>
@@ -229,7 +415,7 @@ if(!empty($permintaan['data_dikirim'])) {
                         <div class="alert alert-info file-info mb-4">
                             <h6><i class="bi bi-paperclip"></i> Dokumen Terlampir</h6>
                             <div class="row">
-                                <div class="col-md-10">
+                                <div class="col-md-12">
                                     <div class="d-flex align-items-center">
                                         <i class="bi bi-file-earmark-text fs-1 text-primary me-3"></i>
                                         <div>
@@ -238,54 +424,28 @@ if(!empty($permintaan['data_dikirim'])) {
                                                 <i class="bi bi-hdd"></i> <?php echo round($file_data['file_size'] / 1024, 2); ?> KB
                                                 <span class="mx-2">•</span>
                                                 <i class="bi bi-card-text"></i> <?php echo $file_data['file_type']; ?>
+                                                <?php if(isset($file_data['upload_time'])): ?>
+                                                <span class="mx-2">•</span>
+                                                <i class="bi bi-calendar"></i> <?php echo date('d/m/Y H:i', strtotime($file_data['upload_time'])); ?>
+                                                <?php endif; ?>
                                             </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             
-                            <!-- FILE PREVIEW BERDASARKAN TYPE -->
-                            <?php if($file_preview_available && isset($file_data['file_data_base64'])): ?>
+                            <!-- FILE PREVIEW -->
+                            <?php if($file_preview_available): ?>
                             <div class="mt-3">
                                 <h6><i class="bi bi-eye"></i> Preview Dokumen:</h6>
                                 <div class="file-preview-container mt-2">
-                                    <?php 
-                                    $file_type = $file_data['file_type'];
-                                    $base64_data = $file_data['file_data_base64'];
-                                    
-                                    if(strpos($file_type, 'image/') === 0): ?>
-                                        <!-- Preview Gambar -->
-                                        <img src="data:<?php echo $file_type; ?>;base64,<?php echo $base64_data; ?>" 
-                                             class="image-preview" 
-                                             alt="Preview <?php echo htmlspecialchars($file_data['original_name']); ?>">
-                                            
-                                    <?php elseif($file_type == 'application/pdf'): ?>
-                                        <!-- Preview PDF -->
-                                        <iframe src="data:application/pdf;base64,<?php echo $base64_data; ?>" 
-                                                class="pdf-preview" 
-                                                title="PDF Preview">
-                                            Browser Anda tidak mendukung preview PDF.
-                                        </iframe>
-                                        
-                                    <?php elseif($file_type == 'text/plain' || strpos($file_type, 'text/') === 0): ?>
-                                        <!-- Preview Text -->
-                                        <div class="text-preview">
-                                            <?php 
-                                            $text_content = base64_decode($base64_data);
-                                            echo htmlspecialchars(substr($text_content, 0, 5000));
-                                            if(strlen($text_content) > 5000) echo "\n\n... [File terlalu besar, hanya menampilkan 5000 karakter pertama]";
-                                            ?>
-                                        </div>
-                                        
-                                    <?php else: ?>
-                                        <!-- File tidak support preview -->
-                                        <div class="unsupported-file">
-                                            <i class="bi bi-file-earmark-x" style="font-size: 3em;"></i>
-                                            <h6 class="mt-3">Preview tidak tersedia</h6>
-                                            <p class="small">File tipe <?php echo $file_type; ?> hanya dapat dilihat dengan aplikasi yang sesuai.</p>
-                                        </div>
-                                    <?php endif; ?>
+                                    <?php echo $file_preview_html; ?>
                                 </div>
+                            </div>
+                            <?php elseif($has_file): ?>
+                            <div class="alert alert-warning mt-3">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <strong>Preview tidak tersedia:</strong> Format file tidak mendukung preview langsung.
                             </div>
                             <?php endif; ?>
                             
@@ -308,6 +468,39 @@ if(!empty($permintaan['data_dikirim'])) {
                         </div>
                         <?php endif; ?>
                         
+                        <!-- Additional Info -->
+                        <?php if(isset($response_data['keterangan_tambahan']) && !empty($response_data['keterangan_tambahan'])): ?>
+                        <div class="alert alert-warning mb-4">
+                            <h6><i class="bi bi-chat-left-text"></i> Keterangan Tambahan</h6>
+                            <?php echo nl2br(htmlspecialchars($response_data['keterangan_tambahan'])); ?>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Metadata -->
+                        <div class="row mt-4 pt-3 border-top">
+                            <div class="col-md-4">
+                                <p class="small">
+                                    <i class="bi bi-clock text-muted"></i>
+                                    <strong>Dikirim pada:</strong><br>
+                                    <?php echo isset($response_data['timestamp']) ? date('d/m/Y H:i', strtotime($response_data['timestamp'])) : 'Tidak tersedia'; ?>
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <p class="small">
+                                    <i class="bi bi-person-check text-muted"></i>
+                                    <strong>Dikirim oleh RS:</strong><br>
+                                    <?php echo $response_data['dikirim_oleh'] ?? $permintaan['ke_rs']; ?>
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <p class="small">
+                                    <i class="bi bi-calendar-event text-muted"></i>
+                                    <strong>Expired dalam:</strong><br>
+                                    <?php echo isset($response_data['expired_days_set']) ? $response_data['expired_days_set'] . ' hari' : '7 hari (default)'; ?>
+                                </p>
+                            </div>
+                        </div>
+                        
                     <?php else: ?>
                         <!-- No Data -->
                         <div class="text-center py-5">
@@ -321,14 +514,14 @@ if(!empty($permintaan['data_dikirim'])) {
             
             <!-- Action Buttons -->
             <div class="mt-4 d-flex justify-content-between">
-                <a href="berkas.php" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Kembali ke Daftar Arsip
+                <a href="berkas.php" class="btn-back">
+                    <i class="bi bi-arrow-left"></i> Kembali ke Arsip
                 </a>
                 
                 <?php if($response_data): ?>
                 <div class="alert alert-light border d-inline-block m-0 p-2">
                     <i class="bi bi-shield-check text-success"></i>
-                    <small class="text-muted">Mode VIEW-ONLY aktif - Tidak ada opsi download untuk keamanan</small>
+                    <small class="text-muted">Mode VIEW-ONLY aktif - Data hanya untuk keperluan medis</small>
                 </div>
                 <?php endif; ?>
             </div>
@@ -343,10 +536,18 @@ if(!empty($permintaan['data_dikirim'])) {
     
     // Blok klik kanan pada preview file untuk mencegah save
     document.addEventListener('contextmenu', function(e) {
-        if(e.target.closest('.file-preview-container')) {
+        const previewContainer = e.target.closest('.file-preview-container');
+        if(previewContainer) {
             e.preventDefault();
             alert('Klik kanan dinonaktifkan untuk keamanan data pasien.');
         }
+    });
+    
+    // Debug info
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("Halaman detail.php dimuat untuk ID:", <?php echo $permintaan_id; ?>);
+        console.log("RS:", '<?php echo $rs_kode; ?>');
+        console.log("Data ada:", <?php echo $response_data ? 'true' : 'false'; ?>);
     });
     </script>
 </body>

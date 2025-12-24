@@ -11,12 +11,6 @@ $rs_nama = $_SESSION['rs_nama'];
 require_once '../config/database.php';
 require_once '../config/encryption.php';
 
-// **HAPUS DEBUG LOGGING - Tidak perlu tampilkan di user**
-// if(!isset($_SESSION['rs_key'])) {
-//     $_SESSION['rs_key'] = getHospitalKey($rs_kode);
-// }
-
-// **HAPUS: Ambil permintaan yang KITA AJUKAN**
 $permintaan_kita_raw = getData('permintaan', "dari_rs = '$rs_kode'", 'id DESC');
 
 // **PERBAIKAN: Filter hanya data yang valid dengan lengkap**
@@ -468,9 +462,10 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
                                     
                                     <!-- Tombol Lihat Detail -->
                                     <div class="mt-3 text-center">
-                                        <a href="detail.php?id=<?php echo $permintaan_id; ?>" class="btn-detail">
-                                            <i class="bi bi-eye"></i> Lihat Detail Lengkap
-                                        </a>
+                                    <!-- **OPTION 1: Relatif path dari pages/ ke pages/detail.php** -->
+                                    <a href="detail.php?id=<?php echo $permintaan_id; ?>" class="btn-detail">
+                                    <i class="bi bi-eye"></i> Lihat Detail Lengkap
+    </a>
                                     </div>
                                 </div>
                             <?php elseif($status == 'pending'): ?>

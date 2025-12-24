@@ -28,6 +28,20 @@ foreach($rs_tujuan_list as $rs) {
     }
 }
 
+// **AMBIL HISTORI PERMINTAAN KITA**
+$histori_permintaan_raw = getData('permintaan', "dari_rs = '$rs_kode'", 'tanggal_permintaan DESC LIMIT 10');
+
+// Filter hanya data valid
+$histori_permintaan = [];
+foreach($histori_permintaan_raw as $p) {
+    if(isset($p['id']) && 
+       isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
+       isset($p['ke_rs']) && !empty(trim($p['ke_rs'])) &&
+       isset($p['status']) && !empty(trim($p['status']))) {
+        $histori_permintaan[] = $p;
+    }
+}
+
 // Proses form submission
 if(isset($_POST['submit_permintaan'])){
     $pasien_nama = trim($_POST['pasien_nama'] ?? '');
@@ -67,6 +81,18 @@ if(isset($_POST['submit_permintaan'])){
             ]);
             
             $success = "✅ Permintaan berhasil diajukan ke RS " . $ke_rs . "!";
+            
+            // Refresh histori setelah submit
+            $histori_permintaan_raw = getData('permintaan', "dari_rs = '$rs_kode'", 'tanggal_permintaan DESC LIMIT 10');
+            $histori_permintaan = [];
+            foreach($histori_permintaan_raw as $p) {
+                if(isset($p['id']) && 
+                   isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
+                   isset($p['ke_rs']) && !empty(trim($p['ke_rs'])) &&
+                   isset($p['status']) && !empty(trim($p['status']))) {
+                    $histori_permintaan[] = $p;
+                }
+            }
             
             // Reset form values untuk clear form
             $pasien_nama = '';
@@ -110,6 +136,7 @@ if(isset($_POST['submit_permintaan'])){
             padding: 30px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
             border: 1px solid #e9ecef;
+            margin-bottom: 30px;
         }
         
         .form-header {
@@ -181,6 +208,84 @@ if(isset($_POST['submit_permintaan'])){
             margin-top: 20px;
             border-left: 4px solid #0dcaf0;
         }
+        
+        /* Style untuk histori */
+        .histori-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+        }
+        
+        .histori-item {
+            border-left: 4px solid #dee2e6;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .histori-item:hover {
+            border-left-color: #0d6efd;
+            background: #f0f8ff;
+            transform: translateX(5px);
+        }
+        
+        .histori-item.success {
+            border-left-color: #198754;
+            background: #f0fff4;
+        }
+        
+        .histori-item.pending {
+            border-left-color: #ffc107;
+            background: #fff8f0;
+        }
+        
+        .histori-item.rejected {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .status-badge {
+            font-size: 0.75em;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: #198754;
+            color: white;
+        }
+        
+        .badge-warning {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .badge-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .badge-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .empty-histori {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        
+        .empty-histori i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
     </style>
 </head>
 <body>
@@ -203,7 +308,7 @@ if(isset($_POST['submit_permintaan'])){
                 </div>
             </div>
             
-            <!-- HANYA SATU ALERT - Tidak double -->
+            <!-- Alert -->
             <?php if(!empty($error)): ?>
             <div class="alert alert-danger alert-dismissible fade show">
                 <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Error</h5>
@@ -393,6 +498,129 @@ if(isset($_POST['submit_permintaan'])){
                             </div>
                         </form>
                     </div>
+                    
+                    <!-- **HISTORI PERMINTAAN** -->
+                    <div class="histori-card">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h4><i class="bi bi-clock-history text-primary"></i> Histori Permintaan</h4>
+                                <p class="text-muted mb-0">10 permintaan terakhir yang Anda ajukan</p>
+                            </div>
+                            <div>
+                                <span class="badge bg-primary">
+                                    <?php echo count($histori_permintaan); ?> permintaan
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <?php if(empty($histori_permintaan)): ?>
+                            <div class="empty-histori">
+                                <i class="bi bi-inbox"></i>
+                                <h5 class="mt-3">Belum ada permintaan</h5>
+                                <p class="text-muted">Ajukan permintaan pertama Anda di atas</p>
+                            </div>
+                        <?php else: ?>
+                            <div class="histori-list">
+                                <?php 
+                                $today = date('Y-m-d');
+                                foreach($histori_permintaan as $item): 
+                                    $status = $item['status'];
+                                    $status_class = '';
+                                    $badge_class = 'badge-secondary';
+                                    
+                                    if($status == 'diterima') {
+                                        $status_class = 'success';
+                                        $badge_class = 'badge-success';
+                                    } elseif($status == 'pending') {
+                                        $status_class = 'pending';
+                                        $badge_class = 'badge-warning';
+                                    } elseif($status == 'ditolak') {
+                                        $status_class = 'rejected';
+                                        $badge_class = 'badge-danger';
+                                    }
+                                    
+                                    // Cek expired
+                                    $expired_date = $item['tanggal_expired'] ?? '';
+                                    $is_expired = $expired_date && $expired_date < $today;
+                                    if($is_expired && $status == 'diterima') {
+                                        $badge_class = 'badge-secondary';
+                                    }
+                                ?>
+                                <div class="histori-item <?php echo $status_class; ?>">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="me-3">
+                                            <h6 class="mb-1">
+                                                <i class="bi bi-person-circle"></i>
+                                                <?php echo htmlspecialchars($item['pasien_nama']); ?>
+                                            </h6>
+                                            <p class="mb-1 small text-muted">
+                                                <i class="bi bi-hospital"></i> Ke: <?php echo $item['ke_rs']; ?>
+                                                <span class="mx-2">•</span>
+                                                <i class="bi bi-calendar"></i> 
+                                                <?php echo date('d/m/Y', strtotime($item['tanggal_permintaan'])); ?>
+                                            </p>
+                                            <?php if(!empty($item['keterangan'])): ?>
+                                            <p class="mb-1 small">
+                                                <i class="bi bi-chat-left-text"></i>
+                                                <?php 
+                                                $preview = substr($item['keterangan'], 0, 60);
+                                                echo htmlspecialchars($preview);
+                                                if(strlen($item['keterangan']) > 60) echo '...';
+                                                ?>
+                                            </p>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge <?php echo $badge_class; ?> status-badge">
+                                                <?php echo strtoupper($status); ?>
+                                                <?php if($is_expired && $status == 'diterima'): ?>
+                                                    <br><small>Expired</small>
+                                                <?php endif; ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Info tambahan -->
+                                    <div class="row small mt-2">
+                                        <div class="col-6">
+                                            <i class="bi bi-card-text text-muted"></i>
+                                            NIK: <?php echo htmlspecialchars($item['pasien_nik']); ?>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <?php if($item['urgensi'] == 'urgent'): ?>
+                                                <span class="badge bg-danger">URGENT</span>
+                                            <?php elseif($item['urgensi'] == 'biasa'): ?>
+                                                <span class="badge bg-warning text-dark">BIASA</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-info">TIDAK URGENT</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Tombol aksi -->
+                                    <div class="mt-2">
+                                        <?php if($status == 'diterima' && !$is_expired): ?>
+                                            <a href="detail.php?id=<?php echo $item['id']; ?>" 
+                                               class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-eye"></i> Lihat Data
+                                            </a>
+                                        <?php endif; ?>
+                                        <a href="berkas.php" class="btn btn-sm btn-outline-primary ms-1">
+                                            <i class="bi bi-arrow-right"></i> Detail
+                                        </a>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            
+                            <!-- Link ke arsip lengkap -->
+                            <div class="text-center mt-4">
+                                <a href="berkas.php" class="btn btn-outline-primary">
+                                    <i class="bi bi-archive"></i> Lihat Semua Permintaan
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
             
@@ -475,6 +703,17 @@ if(isset($_POST['submit_permintaan'])){
                 
                 this.querySelector('.urgency-content').style.borderColor = '#0d6efd';
                 this.querySelector('.urgency-content').style.background = '#e7f1ff';
+            });
+        });
+        
+        // Animasi untuk histori item
+        document.querySelectorAll('.histori-item').forEach(item => {
+            item.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateX(5px)';
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateX(0)';
             });
         });
     });

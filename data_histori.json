@@ -1217,5 +1217,71 @@
         "waktu": "2025-12-24 04:33:42",
         "id": 132,
         "created_at": "2025-12-24 04:33:42"
+    },
+    {
+        "rs_id": "RS001",
+        "aksi": "login",
+        "keterangan": "Login ke sistem",
+        "waktu": "2025-12-27 08:55:19",
+        "id": 133,
+        "created_at": "2025-12-27 08:55:19"
+    },
+    {
+        "permintaan_id": 41,
+        "rs_id": "RS001",
+        "aksi": "mengajukan_permintaan",
+        "keterangan": "Mengajukan permintaan data pasien SRI ke RS002",
+        "waktu": "2025-12-27 10:47:27",
+        "id": 134,
+        "created_at": "2025-12-27 10:47:27"
+    },
+    {
+        "rs_id": "RS002",
+        "aksi": "login",
+        "keterangan": "Login ke sistem",
+        "waktu": "2025-12-27 10:47:45",
+        "id": 135,
+        "created_at": "2025-12-27 10:47:45"
+    },
+    {
+        "permintaan_id": "41",
+        "rs_id": "RS002",
+        "aksi": "mengirim_data",
+        "keterangan": "Mengirim data pasien SRI ke RS001 (Expired: 2 hari)",
+        "waktu": "2025-12-27 10:48:27",
+        "id": 136,
+        "created_at": "2025-12-27 10:48:27"
+    },
+    {
+        "rs_id": "RS003",
+        "aksi": "login",
+        "keterangan": "Login ke sistem",
+        "waktu": "2025-12-27 10:48:41",
+        "id": 137,
+        "created_at": "2025-12-27 10:48:41"
+    },
+    {
+        "rs_id": "RS001",
+        "aksi": "login",
+        "keterangan": "Login ke sistem",
+        "waktu": "2025-12-27 10:49:15",
+        "id": 138,
+        "created_at": "2025-12-27 10:49:15"
+    },
+    {
+        "rs_id": "RS001",
+        "aksi": "login",
+        "keterangan": "Login ke sistem",
+        "waktu": "2025-12-27 11:09:50",
+        "id": 139,
+        "created_at": "2025-12-27 11:09:50"
+    },
+    {
+        "rs_id": "RS001",
+        "aksi": "login",
+        "keterangan": "Login ke sistem",
+        "waktu": "2025-12-27 11:20:54",
+        "id": 140,
+        "created_at": "2025-12-27 11:20:54"
     }
 ]

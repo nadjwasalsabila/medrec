@@ -10,16 +10,29 @@ $rs_nama = $_SESSION['rs_nama'];
 require_once '../config/database.php';
 
 // Ambil semua histori
-$all_histori = getData('histori', "rs_id = '$rs_kode' OR permintaan_id IN (SELECT id FROM permintaan WHERE dari_rs = '$rs_kode' OR ke_rs = '$rs_kode')", '-waktu');
+$all_histori = getData('histori', "rs_id = '$rs_kode'");
 
 // Ambil permintaan untuk tab lainnya
-$permintaan_kirim = getData('permintaan', "dari_rs = '$rs_kode'", '-tanggal_permintaan');
-$permintaan_terima = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'diterima'", '-tanggal_permintaan');
+$permintaan_kirim = getData('permintaan', "dari_rs = '$rs_kode'");
+$permintaan_terima = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'diterima'");
+
+// Sort data
+usort($all_histori, function($a, $b) {
+    return strtotime($b['waktu']) - strtotime($a['waktu']);
+});
+
+usort($permintaan_kirim, function($a, $b) {
+    return strtotime($b['tanggal_permintaan']) - strtotime($a['tanggal_permintaan']);
+});
+
+usort($permintaan_terima, function($a, $b) {
+    return strtotime($b['tanggal_diterima'] ?? $b['tanggal_permintaan']) - strtotime($a['tanggal_diterima'] ?? $a['tanggal_permintaan']);
+});
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Histori</title>
+    <title>Histori - <?php echo htmlspecialchars($rs_nama); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
@@ -35,13 +48,13 @@ $permintaan_terima = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'dit
             align-items: center;
             padding: 0 20px;
         }
-        /* Style untuk main-content */
         .main-content {
             margin-top: 60px;
             margin-left: 250px;
             padding: 20px;
             transition: margin-left 0.3s;
             min-height: 100vh;
+            background: #f8f9fa;
         }
         
         @media (max-width: 768px) {
@@ -52,17 +65,32 @@ $permintaan_terima = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'dit
             }
         }
         
-        /* Style dari histori.php */
         .list-group-item {
             border-left: 4px solid #dee2e6;
+            transition: all 0.3s;
         }
         .list-group-item:hover {
-            border-left: 4px solid #0d6efd;
+            border-left-color: #0d6efd;
             background-color: #f8f9fa;
         }
         .table-hover tbody tr:hover {
             background-color: rgba(13, 110, 253, 0.05);
         }
+        
+        .histori-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+        
+        .icon-login { background: #6f42c1; color: white; }
+        .icon-send { background: #198754; color: white; }
+        .icon-receive { background: #0dcaf0; color: white; }
+        .icon-delete { background: #dc3545; color: white; }
     </style>
 </head>
 <body>
@@ -70,12 +98,13 @@ $permintaan_terima = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'dit
         <button id="sidebarToggle" class="btn btn-secondary">
             <i class="bi bi-list"></i>
         </button>
-        <div class="ms-auto badge bg-linear-gradient(180deg, #2c3e50, #1a2530)">Sistem Aktif</div>
+        <div class="ms-auto badge bg-light text-dark">
+            <i class="bi bi-clock-history"></i> Histori
+        </div>
     </div>
-    <!-- Include sidebar -->
+    
     <?php include '../components/sidebar.php'; ?>
     
-    <!-- Main Content -->
     <div class="main-content">
         <div class="container mt-4">
             
@@ -120,44 +149,50 @@ $permintaan_terima = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'dit
                         </div>
                     <?php else: ?>
                         <div class="list-group">
-                            <?php foreach($all_histori as $hist): ?>
+                            <?php foreach($all_histori as $hist): 
+                                // Tentukan ikon berdasarkan aksi
+                                $icon_class = 'icon-login';
+                                $icon = 'bi-person';
+                                
+                                if(strpos($hist['aksi'], 'kirim') !== false) {
+                                    $icon_class = 'icon-send';
+                                    $icon = 'bi-send';
+                                } elseif(strpos($hist['aksi'], 'ajukan') !== false) {
+                                    $icon_class = 'icon-send';
+                                    $icon = 'bi-send-plus';
+                                } elseif(strpos($hist['aksi'], 'hapus') !== false) {
+                                    $icon_class = 'icon-delete';
+                                    $icon = 'bi-trash';
+                                } elseif(strpos($hist['aksi'], 'login') !== false) {
+                                    $icon_class = 'icon-login';
+                                    $icon = 'bi-person';
+                                } else {
+                                    $icon_class = 'icon-receive';
+                                    $icon = 'bi-inbox';
+                                }
+                            ?>
                             <div class="list-group-item">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">
-                                        <?php 
-                                        $icon = 'bi-activity';
-                                        $color = 'primary';
-                                        if(strpos($hist['aksi'], 'kirim') !== false) {
-                                            $icon = 'bi-send-check';
-                                            $color = 'success';
-                                        } elseif(strpos($hist['aksi'], 'ajukan') !== false) {
-                                            $icon = 'bi-send';
-                                            $color = 'primary';
-                                        } elseif(strpos($hist['aksi'], 'buka') !== false) {
-                                            $icon = 'bi-eye';
-                                            $color = 'info';
-                                        } elseif(strpos($hist['aksi'], 'hapus') !== false) {
-                                            $icon = 'bi-trash';
-                                            $color = 'danger';
-                                        } elseif(strpos($hist['aksi'], 'terima') !== false) {
-                                            $icon = 'bi-check-circle';
-                                            $color = 'success';
-                                        } elseif(strpos($hist['aksi'], 'tolak') !== false) {
-                                            $icon = 'bi-x-circle';
-                                            $color = 'danger';
-                                        }
-                                        ?>
-                                        <i class="bi <?php echo $icon; ?> text-<?php echo $color; ?>"></i>
-                                        <?php echo ucfirst($hist['aksi']); ?>
-                                    </h6>
-                                    <small class="text-muted">
-                                        <?php echo date('d M Y H:i', strtotime($hist['waktu'])); ?>
-                                    </small>
+                                <div class="d-flex align-items-start">
+                                    <div class="histori-icon <?php echo $icon_class; ?>">
+                                        <i class="bi <?php echo $icon; ?>"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">
+                                                <?php echo ucwords(str_replace('_', ' ', $hist['aksi'])); ?>
+                                            </h6>
+                                            <small class="text-muted">
+                                                <?php echo date('d M Y H:i', strtotime($hist['waktu'])); ?>
+                                            </small>
+                                        </div>
+                                        <p class="mb-1"><?php echo $hist['keterangan']; ?></p>
+                                        <?php if($hist['permintaan_id']): ?>
+                                        <small class="text-muted">
+                                            <i class="bi bi-link"></i> ID Permintaan: <?php echo substr($hist['permintaan_id'], 0, 8); ?>...
+                                        </small>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
-                                <p class="mb-1"><?php echo $hist['keterangan']; ?></p>
-                                <small class="text-muted">
-                                    <i class="bi bi-hospital"></i> RS: <?php echo $hist['rs_id']; ?>
-                                </small>
                             </div>
                             <?php endforeach; ?>
                         </div>
@@ -348,7 +383,7 @@ $permintaan_terima = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'dit
                 </div>
             </div>
         </div>
-    </div> <!-- End main-content -->
+    </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -361,12 +396,6 @@ $permintaan_terima = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'dit
                 new bootstrap.Tab(tabTrigger).show();
             }
         }
-        
-        // Auto refresh setiap 30 detik
-        setInterval(() => {
-            console.log("Auto-refresh histori...");
-            location.reload();
-        }, 30000);
     });
     
     // Update URL when tab changes

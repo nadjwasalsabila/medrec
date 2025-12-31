@@ -51,6 +51,8 @@ if (!empty($data_dikirim)) {
 if (!$decrypted_data) {
     die('<div class="alert alert-danger">Gagal mendekripsi data atau data tidak ditemukan</div>');
 }
+
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -252,7 +254,7 @@ if (!$decrypted_data) {
                                     width="100%" 
                                     height="600px" 
                                     style="border: 1px solid #dee2e6; border-radius: 5px;">
-                                Browser Anda tidak mendukung preview PDF. <a href="<?php echo $file_path; ?>" download>Download file</a>
+                                Browser Anda tidak mendukung preview PDF. < href="<?php echo $file_path; ?>"
                             </iframe>
                         <?php elseif ($is_image && file_exists($file_path)): ?>
                             <div class="text-center">
@@ -271,13 +273,6 @@ if (!$decrypted_data) {
                     
                     <!-- Tombol Download -->
                     <?php if (file_exists($file_path)): ?>
-                    <div class="text-center">
-                        <a href="<?php echo $file_path; ?>" 
-                           class="btn-download"
-                           download="<?php echo htmlspecialchars($file_data['original_name'] ?? 'file'); ?>">
-                            <i class="bi bi-download"></i> Download File
-                        </a>
-                    </div>
                     <?php else: ?>
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>

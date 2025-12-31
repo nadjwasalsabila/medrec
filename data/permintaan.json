@@ -1,0 +1,18 @@
+[
+    {
+        "dari_rs": "RS001",
+        "ke_rs": "RS002",
+        "pasien_nama": "KELINCI",
+        "pasien_nik": "1234567899864512",
+        "urgensi": "biasa",
+        "keterangan": "biasaaaa",
+        "status": "diterima",
+        "tanggal_permintaan": "2025-12-31 05:55:44",
+        "id": "6954acd0344dd_1767156944",
+        "created": "2025-12-31 05:55:44",
+        "updated": "2025-12-31 05:56:25",
+        "data_dikirim": "rsARBmGlj1kDsQ8fgsvK2DhxQxUFMiv0jHjb2fSkrONizrlGvPGGKKoc+35HqvamFNfiwQyysbUyQyBQ\/zYo9gvpDqKzu3eFw2qppF+51rEAq43hHyA8RWNd4Ba81VFkdbYvSnmyQKDaRyXG89x4ubelUlzXOLgnDOetmTeJ9fw5te6e4ZmGjTqfbbYJP15yudbzD+XEoh\/d7pTpy\/AlRQVx1qYltmawQT5Z3Zdh\/SUZ5vkiGu+OufxLwVPg\/E5XdYYEj++LduhMcr6rgndGnH5i2r3ySck+7aQvii2K+nTMAuo5TusXEGtFJRJmeZNa97T9G7jfDtpvf4UL28snSjg9A6XRVHMnrDWE+RiGSDUePl41xcN5qFh\/gc\/dDUutVYSvl6PBZx6MsOVkq1KcsqpgkVosdsVNieVNpzxyN1M4ETTTUeFAxTf7FBPjEuREAJ5EWnKosQw0S+pfcpvdMC+UofAMglPgsJXt7Tk9\/cSa4UCaVla2QSj4WdgY529p37JsqWQOsJbizIrKaKiokWvg0vvjIhKz4JkWPJl5Cxe1nhaNKCzMyuCwxy6v8\/k+",
+        "tanggal_expired": "2026-01-01",
+        "tanggal_diterima": "2025-12-31 05:56:25"
+    }
+]

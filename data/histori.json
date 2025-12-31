@@ -1,5 +1,6 @@
 [
     {
+<<<<<<< HEAD
         "rs_id": "RS001",
         "aksi": "login",
         "keterangan": "Login ke sistem",
@@ -17,11 +18,22 @@
         "id": "6953e9c922de9_1767107017",
         "created": "2025-12-30 16:03:37",
         "updated": "2025-12-30 16:03:37"
+=======
+        "permintaan_id": "6954acd0344dd_1767156944",
+        "rs_id": "RS001",
+        "aksi": "mengajukan_permintaan",
+        "keterangan": "Mengajukan permintaan data pasien KELINCI ke RS002",
+        "waktu": "2025-12-31 05:55:44",
+        "id": "6954acd03491c_1767156944",
+        "created": "2025-12-31 05:55:44",
+        "updated": "2025-12-31 05:55:44"
+>>>>>>> a1bb03978e94397bd3df6098a66f17b862f38bfa
     },
     {
         "rs_id": "RS002",
         "aksi": "login",
         "keterangan": "Login ke sistem",
+<<<<<<< HEAD
         "waktu": "2025-12-30 16:03:47",
         "id": "6953e9d3b2c0d_1767107027",
         "created": "2025-12-30 16:03:47",
@@ -36,11 +48,28 @@
         "id": "6953e9ecab52d_1767107052",
         "created": "2025-12-30 16:04:12",
         "updated": "2025-12-30 16:04:12"
+=======
+        "waktu": "2025-12-31 05:55:54",
+        "id": "6954acdad16b5_1767156954",
+        "created": "2025-12-31 05:55:54",
+        "updated": "2025-12-31 05:55:54"
+    },
+    {
+        "permintaan_id": "6954acd0344dd_1767156944",
+        "rs_id": "RS002",
+        "aksi": "mengirim_data",
+        "keterangan": "Mengirim data pasien KELINCI ke RS RS001",
+        "waktu": "2025-12-31 05:56:25",
+        "id": "6954acf94954e_1767156985",
+        "created": "2025-12-31 05:56:25",
+        "updated": "2025-12-31 05:56:25"
+>>>>>>> a1bb03978e94397bd3df6098a66f17b862f38bfa
     },
     {
         "rs_id": "RS001",
         "aksi": "login",
         "keterangan": "Login ke sistem",
+<<<<<<< HEAD
         "waktu": "2025-12-30 16:04:24",
         "id": "6953e9f8482d6_1767107064",
         "created": "2025-12-30 16:04:24",
@@ -92,11 +121,18 @@
         "id": "69549ae47fdb7_1767152356",
         "created": "2025-12-31 04:39:16",
         "updated": "2025-12-31 04:39:16"
+=======
+        "waktu": "2025-12-31 05:56:37",
+        "id": "6954ad0567765_1767156997",
+        "created": "2025-12-31 05:56:37",
+        "updated": "2025-12-31 05:56:37"
+>>>>>>> a1bb03978e94397bd3df6098a66f17b862f38bfa
     },
     {
         "rs_id": "RS001",
         "aksi": "login",
         "keterangan": "Login ke sistem",
+<<<<<<< HEAD
         "waktu": "2025-12-31 04:42:28",
         "id": "69549ba49626f_1767152548",
         "created": "2025-12-31 04:42:28",
@@ -205,5 +241,11 @@
         "id": "6954a13feae00_1767153983",
         "created": "2025-12-31 05:06:23",
         "updated": "2025-12-31 05:06:23"
+=======
+        "waktu": "2025-12-31 05:56:37",
+        "id": "6954ad056dd4c_1767156997",
+        "created": "2025-12-31 05:56:37",
+        "updated": "2025-12-31 05:56:37"
+>>>>>>> a1bb03978e94397bd3df6098a66f17b862f38bfa
     }
 ]

@@ -1,129 +1,182 @@
 <?php
-// config/database.php - NO OUTPUT VERSION
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Data RS untuk login
+/* ===============================
+   DATA RUMAH SAKIT
+================================ */
 $rumah_sakit = [
-    'RS001' => ['password' => 'rs001pass', 'nama' => 'RS Umum Kota', 'key' => 'key-rs001'],
-    'RS002' => ['password' => 'rs002pass', 'nama' => 'RS Khusus Jantung', 'key' => 'key-rs002'],
-    'RS003' => ['password' => 'rs003pass', 'nama' => 'RS Ibu Anak', 'key' => 'key-rs003']
+    'RS001' => [
+        'password' => 'rs001pass',
+        'nama' => 'RS Umum Kota',
+        'key' => 'key-rs001'
+    ],
+    'RS002' => [
+        'password' => 'rs002pass',
+        'nama' => 'RS Khusus Jantung',
+        'key' => 'key-rs002'
+    ],
+    'RS003' => [
+        'password' => 'rs003pass',
+        'nama' => 'RS Ibu Anak',
+        'key' => 'key-rs003'
+    ],
 ];
 
-// File untuk menyimpan data
-$data_files = [
-    'permintaan' => __DIR__ . '/../data_permintaan.json',
-    'histori' => __DIR__ . '/../data_histori.json'
-];
+/* ===============================
+   FUNGSI SIMULASI DATABASE (FILE-BASED)
+================================ */
+function getData($collection, $filter = '')
+{
+    $file = "../data/{$collection}.json";
 
-// Buat file jika belum ada - TANPA ECHO
-foreach ($data_files as $file) {
     if (!file_exists($file)) {
-        @file_put_contents($file, '[]');
-    }
-}
-
-// **FUNGSI GET DATA**
-function getData($table, $filter = '', $sort = '', $limit = 1000) {
-    global $data_files;
-    
-    if (!isset($data_files[$table])) {
         return [];
     }
-    
-    $content = @file_get_contents($data_files[$table]);
-    if (!$content) {
-        return [];
-    }
-    
-    $data = json_decode($content, true);
-    return is_array($data) ? $data : [];
-}
 
-// **FUNGSI CREATE DATA**  
-function createData($table, $new_data) {
-    global $data_files;
-    
-    if (!isset($data_files[$table])) {
-        return ['success' => false, 'error' => 'Table not found'];
-    }
-    
-    $content = @file_get_contents($data_files[$table]);
-    $data = json_decode($content, true) ?: [];
-    
-    // Generate ID
-    $new_id = 1;
-    if (!empty($data)) {
-        $ids = array_column($data, 'id');
-        if (!empty($ids)) {
-            $new_id = max($ids) + 1;
+    $data = json_decode(file_get_contents($file), true) ?: [];
+
+    // Filter data
+    if (!empty($filter)) {
+        $filtered = [];
+        foreach ($data as $item) {
+            $match = true;
+
+            // Simple filter parser
+            if (strpos($filter, 'AND') !== false) {
+                $conditions = explode('AND', $filter);
+                foreach ($conditions as $cond) {
+                    $cond = trim($cond);
+                    if (strpos($cond, '=') !== false) {
+                        list($key, $value) = explode('=', $cond, 2);
+                        $key = trim($key);
+                        $value = trim($value, " '");
+
+                        if (!isset($item[$key]) || $item[$key] != $value) {
+                            $match = false;
+                            break;
+                        }
+                    }
+                }
+            } elseif (strpos($filter, '=') !== false) {
+                list($key, $value) = explode('=', $filter, 2);
+                $key = trim($key);
+                $value = trim($value, " '");
+
+                $match = isset($item[$key]) && $item[$key] == $value;
+            }
+
+            if ($match) {
+                $filtered[] = $item;
+            }
         }
+        return $filtered;
     }
-    
-    $new_data['id'] = $new_id;
-    $new_data['created_at'] = date('Y-m-d H:i:s');
-    $data[] = $new_data;
-    
-    if (@file_put_contents($data_files[$table], json_encode($data, JSON_PRETTY_PRINT))) {
-        return ['success' => true, 'id' => $new_id];
-    }
-    
-    return ['success' => false, 'error' => 'Failed to save'];
+
+    return $data;
 }
 
-// **FUNGSI UPDATE DATA**
-function updateData($table, $id, $update_data) {
-    global $data_files;
-    
-    if (!isset($data_files[$table])) {
-        return ['success' => false, 'error' => 'Table not found'];
+function createData($collection, $data)
+{
+    $file = "../data/{$collection}.json";
+
+    // Buat folder data jika belum ada
+    if (!is_dir('../data')) {
+        mkdir('../data', 0755, true);
     }
-    
-    $content = @file_get_contents($data_files[$table]);
-    $data = json_decode($content, true) ?: [];
-    
-    $updated = false;
-    foreach ($data as &$item) {
-        if (isset($item['id']) && $item['id'] == $id) {
-            $item = array_merge($item, $update_data);
-            $updated = true;
+
+    // Generate ID unik
+    $data['id'] = uniqid() . '_' . time();
+    $data['created'] = date('Y-m-d H:i:s');
+    $data['updated'] = date('Y-m-d H:i:s');
+
+    // Baca data yang ada
+    $existing = [];
+    if (file_exists($file)) {
+        $existing = json_decode(file_get_contents($file), true) ?: [];
+    }
+
+    // Tambah data baru
+    $existing[] = $data;
+
+    // Simpan ke file
+    file_put_contents($file, json_encode($existing, JSON_PRETTY_PRINT));
+
+    return ['success' => true, 'id' => $data['id']];
+}
+
+function updateData($collection, $id, $data)
+{
+    $file = "../data/{$collection}.json";
+
+    if (!file_exists($file)) {
+        return ['success' => false, 'error' => 'File not found'];
+    }
+
+    $items = json_decode(file_get_contents($file), true) ?: [];
+    $found = false;
+
+    foreach ($items as &$item) {
+        if ($item['id'] == $id) {
+            $item = array_merge($item, $data);
+            $item['updated'] = date('Y-m-d H:i:s');
+            $found = true;
             break;
         }
     }
-    
-    if ($updated && @file_put_contents($data_files[$table], json_encode($data, JSON_PRETTY_PRINT))) {
+
+    if ($found) {
+        file_put_contents($file, json_encode($items, JSON_PRETTY_PRINT));
         return ['success' => true];
     }
-    
-    return ['success' => false, 'error' => 'Update failed'];
+
+    return ['success' => false, 'error' => 'Item not found'];
 }
 
-// **FUNGSI DELETE DATA**
-function deleteData($table, $id) {
-    global $data_files;
-    
-    if (!isset($data_files[$table])) {
-        return ['success' => false, 'error' => 'Table not found'];
+function deleteData($collection, $id)
+{
+    $file = "../data/{$collection}.json";
+
+    if (!file_exists($file)) {
+        return ['success' => false, 'error' => 'File not found'];
     }
-    
-    $content = @file_get_contents($data_files[$table]);
-    $data = json_decode($content, true) ?: [];
-    
-    $new_data = [];
-    $deleted = false;
-    
-    foreach ($data as $item) {
-        if (isset($item['id']) && $item['id'] == $id) {
-            $deleted = true;
+
+    $items = json_decode(file_get_contents($file), true) ?: [];
+    $new_items = [];
+    $found = false;
+
+    foreach ($items as $item) {
+        if ($item['id'] != $id) {
+            $new_items[] = $item;
         } else {
-            $new_data[] = $item;
+            $found = true;
         }
     }
-    
-    if ($deleted && @file_put_contents($data_files[$table], json_encode($new_data, JSON_PRETTY_PRINT))) {
+
+    if ($found) {
+        file_put_contents($file, json_encode($new_items, JSON_PRETTY_PRINT));
         return ['success' => true];
     }
-    
-    return ['success' => false, 'error' => 'Delete failed'];
+
+    return ['success' => false, 'error' => 'Item not found'];
+}
+
+function getById($collection, $id)
+{
+    $items = getData($collection);
+
+    foreach ($items as $item) {
+        if ($item['id'] == $id) {
+            return $item;
+        }
+    }
+
+    return null;
+}
+
+/* ===============================
+   KUNCI RS (DIPAKAI ENCRYPT/DECRYPT)
+================================ */
+function getHospitalKey($rs_kode)
+{
+    global $rumah_sakit;
+    return $rumah_sakit[$rs_kode]['key'] ?? null;
 }
 ?>

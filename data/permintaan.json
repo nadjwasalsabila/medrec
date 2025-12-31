@@ -5,6 +5,7 @@
         "pasien_nama": "KELINCI",
         "pasien_nik": "1234567899864512",
         "urgensi": "biasa",
+<<<<<<< HEAD
         "keterangan": "pasien membutuhkan tindakan lanjut",
         "status": "diterima",
         "tanggal_permintaan": "2025-12-30 16:03:37",
@@ -75,5 +76,16 @@
         "data_dikirim": "TFWFc6fxby\/\/q4h0Y\/AGYPmKd6IjI1SukOZiWRIVyupnh3TllFNk+wFNfForxpAsn5cdMl2buWQeBowoac9KjbaxX8Ln06w1W3JHoOET0CdCYf8Ift+27WVCcX9mCI44fJxCtO63IxEEMcBbwx1R5jhkwIazXsSgpgf4domrRusWI9g5YvWdA2qkyBBg03sry7L8LdtQ6bNj3Yhs88F4wSWgAjiimf6zVcVuMgB6T03FYSHMT1EKgkUxFZayuWJ1jnJvxZMjeu2V4XkLCeysE9Vl3yJNYjceth3agKnJAmNuME4mn4SB4nadBOKqDcaUF5ZE\/pNNzaSaSRU9So2YIw816dydOXMTlHd\/LufwCNXvlj5sYkJD1tXubYmc1Mb74yKwsndaLUAIbkl\/9RVcfpHEGXM4OBSkUVdFUHPsqDpfLNwFRB5JhXtbQU98O\/o3kajLhlsfOhRjFkDzTqpeEG+G4TDnAqwDR44capQmUFlebwbnTO7kYyJiUsyb6oE88dG7Vl1tYc+Q+YnQ2EuRkktV6MPCu0VtgV75hZ\/tPgbH6OVqXmwT\/s\/2sgRaxSZJ",
         "tanggal_expired": "2026-01-10",
         "tanggal_diterima": "2025-12-31 05:06:12"
+=======
+        "keterangan": "biasaaaa",
+        "status": "diterima",
+        "tanggal_permintaan": "2025-12-31 05:55:44",
+        "id": "6954acd0344dd_1767156944",
+        "created": "2025-12-31 05:55:44",
+        "updated": "2025-12-31 05:56:25",
+        "data_dikirim": "rsARBmGlj1kDsQ8fgsvK2DhxQxUFMiv0jHjb2fSkrONizrlGvPGGKKoc+35HqvamFNfiwQyysbUyQyBQ\/zYo9gvpDqKzu3eFw2qppF+51rEAq43hHyA8RWNd4Ba81VFkdbYvSnmyQKDaRyXG89x4ubelUlzXOLgnDOetmTeJ9fw5te6e4ZmGjTqfbbYJP15yudbzD+XEoh\/d7pTpy\/AlRQVx1qYltmawQT5Z3Zdh\/SUZ5vkiGu+OufxLwVPg\/E5XdYYEj++LduhMcr6rgndGnH5i2r3ySck+7aQvii2K+nTMAuo5TusXEGtFJRJmeZNa97T9G7jfDtpvf4UL28snSjg9A6XRVHMnrDWE+RiGSDUePl41xcN5qFh\/gc\/dDUutVYSvl6PBZx6MsOVkq1KcsqpgkVosdsVNieVNpzxyN1M4ETTTUeFAxTf7FBPjEuREAJ5EWnKosQw0S+pfcpvdMC+UofAMglPgsJXt7Tk9\/cSa4UCaVla2QSj4WdgY529p37JsqWQOsJbizIrKaKiokWvg0vvjIhKz4JkWPJl5Cxe1nhaNKCzMyuCwxy6v8\/k+",
+        "tanggal_expired": "2026-01-01",
+        "tanggal_diterima": "2025-12-31 05:56:25"
+>>>>>>> a1bb03978e94397bd3df6098a66f17b862f38bfa
     }
 ]

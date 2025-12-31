@@ -19,6 +19,16 @@
         "updated": "2025-12-30 16:03:37"
     },
     {
+        "permintaan_id": "6954acd0344dd_1767156944",
+        "rs_id": "RS001",
+        "aksi": "mengajukan_permintaan",
+        "keterangan": "Mengajukan permintaan data pasien KELINCI ke RS002",
+        "waktu": "2025-12-31 05:55:44",
+        "id": "6954acd03491c_1767156944",
+        "created": "2025-12-31 05:55:44",
+        "updated": "2025-12-31 05:55:44"
+    },
+    {
         "rs_id": "RS002",
         "aksi": "login",
         "keterangan": "Login ke sistem",
@@ -38,172 +48,13 @@
         "updated": "2025-12-30 16:04:12"
     },
     {
-        "rs_id": "RS001",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-30 16:04:24",
-        "id": "6953e9f8482d6_1767107064",
-        "created": "2025-12-30 16:04:24",
-        "updated": "2025-12-30 16:04:24"
-    },
-    {
-        "rs_id": "RS002",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 04:37:44",
-        "id": "69549a883671f_1767152264",
-        "created": "2025-12-31 04:37:44",
-        "updated": "2025-12-31 04:37:44"
-    },
-    {
-        "permintaan_id": "69549ab55c609_1767152309",
-        "rs_id": "RS002",
-        "aksi": "mengajukan_permintaan",
-        "keterangan": "Mengajukan permintaan data pasien KUCING123 ke RS003",
-        "waktu": "2025-12-31 04:38:29",
-        "id": "69549ab55cc41_1767152309",
-        "created": "2025-12-31 04:38:29",
-        "updated": "2025-12-31 04:38:29"
-    },
-    {
-        "rs_id": "RS003",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 04:38:40",
-        "id": "69549ac059818_1767152320",
-        "created": "2025-12-31 04:38:40",
-        "updated": "2025-12-31 04:38:40"
-    },
-    {
-        "permintaan_id": "69549ab55c609_1767152309",
-        "rs_id": "RS003",
-        "aksi": "mengirim_data",
-        "keterangan": "Mengirim data pasien KUCING123 ke RS RS002",
-        "waktu": "2025-12-31 04:39:01",
-        "id": "69549ad509c65_1767152341",
-        "created": "2025-12-31 04:39:01",
-        "updated": "2025-12-31 04:39:01"
-    },
-    {
-        "rs_id": "RS002",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 04:39:16",
-        "id": "69549ae47fdb7_1767152356",
-        "created": "2025-12-31 04:39:16",
-        "updated": "2025-12-31 04:39:16"
-    },
-    {
-        "rs_id": "RS001",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 04:42:28",
-        "id": "69549ba49626f_1767152548",
-        "created": "2025-12-31 04:42:28",
-        "updated": "2025-12-31 04:42:28"
-    },
-    {
-        "permintaan_id": "69549be62ce9e_1767152614",
-        "rs_id": "RS001",
-        "aksi": "mengajukan_permintaan",
-        "keterangan": "Mengajukan permintaan data pasien DOMBA ke RS002",
-        "waktu": "2025-12-31 04:43:34",
-        "id": "69549be62d3f4_1767152614",
-        "created": "2025-12-31 04:43:34",
-        "updated": "2025-12-31 04:43:34"
-    },
-    {
-        "rs_id": "RS002",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 04:43:45",
-        "id": "69549bf1d4c19_1767152625",
-        "created": "2025-12-31 04:43:45",
-        "updated": "2025-12-31 04:43:45"
-    },
-    {
-        "permintaan_id": "69549be62ce9e_1767152614",
+        "permintaan_id": "6954acd0344dd_1767156944",
         "rs_id": "RS002",
         "aksi": "mengirim_data",
-        "keterangan": "Mengirim data pasien DOMBA ke RS RS001",
-        "waktu": "2025-12-31 04:44:11",
-        "id": "69549c0b615bd_1767152651",
-        "created": "2025-12-31 04:44:11",
-        "updated": "2025-12-31 04:44:11"
-    },
-    {
-        "rs_id": "RS001",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 04:44:22",
-        "id": "69549c16757aa_1767152662",
-        "created": "2025-12-31 04:44:22",
-        "updated": "2025-12-31 04:44:22"
-    },
-    {
-        "permintaan_id": "69549e7209dcb_1767153266",
-        "rs_id": "RS001",
-        "aksi": "mengajukan_permintaan",
-        "keterangan": "Mengajukan permintaan data pasien KAMBING ke RS002",
-        "waktu": "2025-12-31 04:54:26",
-        "id": "69549e720a23a_1767153266",
-        "created": "2025-12-31 04:54:26",
-        "updated": "2025-12-31 04:54:26"
-    },
-    {
-        "rs_id": "RS002",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 04:54:36",
-        "id": "69549e7c8c2f0_1767153276",
-        "created": "2025-12-31 04:54:36",
-        "updated": "2025-12-31 04:54:36"
-    },
-    {
-        "rs_id": "RS001",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 05:02:51",
-        "id": "6954a06b759ac_1767153771",
-        "created": "2025-12-31 05:02:51",
-        "updated": "2025-12-31 05:02:51"
-    },
-    {
-        "permintaan_id": "6954a0d85d204_1767153880",
-        "rs_id": "RS001",
-        "aksi": "mengajukan_permintaan",
-        "keterangan": "Mengajukan permintaan data pasien KUCING123 ke RS003",
-        "waktu": "2025-12-31 05:04:40",
-        "id": "6954a0d85d555_1767153880",
-        "created": "2025-12-31 05:04:40",
-        "updated": "2025-12-31 05:04:40"
-    },
-    {
-        "rs_id": "RS003",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 05:04:55",
-        "id": "6954a0e736607_1767153895",
-        "created": "2025-12-31 05:04:55",
-        "updated": "2025-12-31 05:04:55"
-    },
-    {
-        "permintaan_id": "6954a0d85d204_1767153880",
-        "rs_id": "RS003",
-        "aksi": "mengirim_data",
-        "keterangan": "Mengirim data pasien KUCING123 ke RS RS001",
-        "waktu": "2025-12-31 05:06:12",
-        "id": "6954a1345577a_1767153972",
-        "created": "2025-12-31 05:06:12",
-        "updated": "2025-12-31 05:06:12"
-    },
-    {
-        "rs_id": "RS001",
-        "aksi": "login",
-        "keterangan": "Login ke sistem",
-        "waktu": "2025-12-31 05:06:23",
-        "id": "6954a13feae00_1767153983",
-        "created": "2025-12-31 05:06:23",
-        "updated": "2025-12-31 05:06:23"
+        "keterangan": "Mengirim data pasien KELINCI ke RS RS001",
+        "waktu": "2025-12-31 05:56:25",
+        "id": "6954acf94954e_1767156985",
+        "created": "2025-12-31 05:56:25",
+        "updated": "2025-12-31 05:56:25"
     }
 ]

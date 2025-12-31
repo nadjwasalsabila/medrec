@@ -12,37 +12,24 @@ require_once '../config/database.php';
 require_once '../config/encryption.php';
 
 // Inisialisasi variabel
-$permintaan_masuk = [];
-$histori_kirim = [];
 $success = '';
 $error = '';
 
 // Ambil permintaan masuk ke RS ini (status pending)
-$permintaan_masuk_raw = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'pending'", 'tanggal_permintaan DESC');
+$permintaan_masuk = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'pending'");
+usort($permintaan_masuk, function($a, $b) {
+    return strtotime($b['tanggal_permintaan']) - strtotime($a['tanggal_permintaan']);
+});
 
-// Filter hanya data valid
-$permintaan_masuk = [];
-foreach($permintaan_masuk_raw as $p) {
-    if(isset($p['id']) && 
-       isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
-       isset($p['dari_rs']) && !empty(trim($p['dari_rs']))) {
-        $permintaan_masuk[] = $p;
-    }
-}
+// Ambil histori pengiriman (permintaan yang sudah kita kirim)
+$histori_kirim = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'diterima'");
+usort($histori_kirim, function($a, $b) {
+    $date_a = $a['tanggal_diterima'] ?? $a['tanggal_permintaan'];
+    $date_b = $b['tanggal_diterima'] ?? $b['tanggal_permintaan'];
+    return strtotime($date_b) - strtotime($date_a);
+});
 
-// Ambil histori pengiriman
-$histori_kirim_raw = getData('permintaan', "dari_rs = '$rs_kode' AND status = 'diterima'", 'tanggal_diterima DESC');
-
-$histori_kirim = [];
-foreach($histori_kirim_raw as $p) {
-    if(isset($p['id']) && 
-       isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
-       isset($p['ke_rs']) && !empty(trim($p['ke_rs']))) {
-        $histori_kirim[] = $p;
-    }
-}
-
-// Proses kirim data dengan file (dari modal)
+// Proses kirim data
 if(isset($_POST['kirim_data'])){
     $permintaan_id = $_POST['permintaan_id'] ?? '';
     $pasien_nik = $_POST['pasien_nik'] ?? '';
@@ -66,77 +53,51 @@ if(isset($_POST['kirim_data'])){
     if(!$permintaan_data) {
         $error = "❌ Permintaan tidak ditemukan";
     } else {
-        $error_upload = '';
         $file_data = [];
+        $text_data = $_POST['text_data'] ?? '';
         
-        // Handle file upload
+        // Handle file upload jika ada
         if(isset($_FILES['data_file']) && $_FILES['data_file']['error'] == 0){
-            $allowed_types = [
-                'application/pdf' => 'pdf',
-                'image/jpeg' => 'jpg',
-                'image/png' => 'png',
-                'application/msword' => 'doc',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
-                'application/vnd.ms-excel' => 'xls',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
-                'text/plain' => 'txt'
-            ];
+            // Buat folder uploads jika belum ada
+            if(!is_dir('../uploads')) {
+                mkdir('../uploads', 0755, true);
+            }
             
             $file = $_FILES['data_file'];
-            $file_type = $file['type'];
-            $file_size = $file['size'];
+            $file_name = 'data_' . $pasien_nik . '_' . time() . '_' . basename($file['name']);
+            $file_path = '../uploads/' . $file_name;
             
-            if(!array_key_exists($file_type, $allowed_types)){
-                $error_upload = "Jenis file tidak diizinkan";
-            }
-            elseif($file_size > 10485760){
-                $error_upload = "Ukuran file terlalu besar. Maksimal 10MB.";
-            }
-            else{
-                $extension = $allowed_types[$file_type];
-                $file_name = 'data_' . $pasien_nik . '_' . time() . '.' . $extension;
-                $file_path = '../uploads/' . $file_name;
-                
-                if(move_uploaded_file($file['tmp_name'], $file_path)){
-                    $file_data = [
-                        'file_name' => $file_name,
-                        'original_name' => $file['name'],
-                        'file_type' => $file_type,
-                        'file_size' => $file_size,
-                        'upload_time' => date('Y-m-d H:i:s')
-                    ];
-                } else {
-                    $error_upload = "Gagal menyimpan file.";
-                }
+            if(move_uploaded_file($file['tmp_name'], $file_path)){
+                $file_data = [
+                    'file_name' => $file_name,
+                    'original_name' => $file['name'],
+                    'file_type' => $file['type'],
+                    'file_size' => $file['size']
+                ];
             }
         }
         
-        // Text data
-        $text_data = $_POST['text_data'] ?? '';
-        
-        // Gabungkan data
+        // Siapkan data untuk dienkripsi
         $pasien_data_array = [
             'pasien_nama' => $permintaan_data['pasien_nama'],
             'pasien_nik' => $pasien_nik,
             'riwayat_medis' => $text_data,
             'file_data' => $file_data,
             'keterangan_tambahan' => $_POST['keterangan_tambahan'] ?? '',
-            'timestamp' => date('Y-m-d H:i:s'),
             'dikirim_oleh' => $rs_kode,
-            'expired_days_set' => $expired_days
+            'dikirim_pada' => date('Y-m-d H:i:s'),
+            'expired_days' => $expired_days
         ];
         
-        $pasien_data = json_encode($pasien_data_array, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $pasien_data = json_encode($pasien_data_array, JSON_UNESCAPED_UNICODE);
         
-        // Enkripsi data
-        $key_for_data = getHospitalKey($permintaan_data['dari_rs']); // Kunci RS pengirim
-        $data_terenkripsi = encryptData($pasien_data, $key_for_data);
+        // **ENKRIPSI dengan kunci RS yang meminta**
+        $key_peminta = getHospitalKey($dari_rs);
+        $data_terenkripsi = encryptData($pasien_data, $key_peminta);
         
-        if(empty($data_terenkripsi)) {
-            $error_upload = "Gagal mengenkripsi data";
-        }
-        
-        if(empty($error_upload)){
+        if(!$data_terenkripsi) {
+            $error = "❌ Gagal mengenkripsi data";
+        } else {
             // Update database
             $update_data = [
                 'status' => 'diterima',
@@ -148,48 +109,38 @@ if(isset($_POST['kirim_data'])){
             $result = updateData('permintaan', $permintaan_id, $update_data);
             
             if($result['success']){
-                // Log histori
+                // Simpan histori
                 createData('histori', [
                     'permintaan_id' => $permintaan_id,
                     'rs_id' => $rs_kode,
                     'aksi' => 'mengirim_data',
                     'keterangan' => 'Mengirim data pasien ' . $permintaan_data['pasien_nama'] . 
-                                   ' ke ' . $permintaan_data['dari_rs'] . ' (Expired: ' . $expired_days . ' hari)',
+                                   ' ke RS ' . $dari_rs,
                     'waktu' => date('Y-m-d H:i:s')
                 ]);
                 
-                $success = "✅ Data berhasil dikirim ke RS " . $permintaan_data['dari_rs'] . "!";
+                $success = "✅ Data berhasil dikirim ke RS " . $dari_rs . "!";
+                $success .= "<br><small>Data dienkripsi dengan kunci RS " . $dari_rs . "</small>";
                 
                 // Refresh data
-                $permintaan_masuk_raw = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'pending'", 'tanggal_permintaan DESC');
-                $permintaan_masuk = [];
-                foreach($permintaan_masuk_raw as $p) {
-                    if(isset($p['id']) && 
-                       isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
-                       isset($p['dari_rs']) && !empty(trim($p['dari_rs']))) {
-                        $permintaan_masuk[] = $p;
-                    }
-                }
+                $permintaan_masuk = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'pending'");
+                usort($permintaan_masuk, function($a, $b) {
+                    return strtotime($b['tanggal_permintaan']) - strtotime($a['tanggal_permintaan']);
+                });
                 
-                $histori_kirim_raw = getData('permintaan', "dari_rs = '$rs_kode' AND status = 'diterima'", 'tanggal_diterima DESC');
-                $histori_kirim = [];
-                foreach($histori_kirim_raw as $p) {
-                    if(isset($p['id']) && 
-                       isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
-                       isset($p['ke_rs']) && !empty(trim($p['ke_rs']))) {
-                        $histori_kirim[] = $p;
-                    }
-                }
+                $histori_kirim = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'diterima'");
+                usort($histori_kirim, function($a, $b) {
+                    $date_a = $a['tanggal_diterima'] ?? $a['tanggal_permintaan'];
+                    $date_b = $b['tanggal_diterima'] ?? $b['tanggal_permintaan'];
+                    return strtotime($date_b) - strtotime($date_a);
+                });
             } else {
-                $error = "❌ Gagal mengirim data";
+                $error = "❌ Gagal mengupdate database";
             }
-        } else {
-            $error = "❌ " . $error_upload;
         }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -197,7 +148,20 @@ if(isset($_POST['kirim_data'])){
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(180deg, #2c3e50, #1a2530);
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
         .main-content {
+            margin-top: 60px;
             margin-left: 250px;
             padding: 20px;
             transition: margin-left 0.3s;
@@ -314,13 +278,28 @@ if(isset($_POST['kirim_data'])){
             border-left-color: #6c757d;
             background: #f8f9fa;
         }
+        
+        .encryption-info {
+            background: linear-gradient(45deg, #6a11cb, #2575fc);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
-    <!-- Include sidebar -->
+    <div class="topbar">
+        <button id="sidebarToggle" class="btn btn-secondary">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="ms-auto badge bg-light text-dark">
+            <i class="bi bi-shield-check"></i> Mode Enkripsi Aktif
+        </div>
+    </div>
+    
     <?php include '../components/sidebar.php'; ?>
     
-    <!-- Main Content -->
     <div class="main-content">
         <div class="container">
             <!-- Header -->
@@ -339,17 +318,38 @@ if(isset($_POST['kirim_data'])){
                 </div>
             </div>
             
+            <!-- Informasi Enkripsi -->
+            <div class="encryption-info">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-shield-lock me-3" style="font-size: 2em;"></i>
+                    <div>
+                        <h5 class="mb-1">Sistem Enkripsi End-to-End</h5>
+                        <p class="mb-0 small">Data yang Anda kirim akan dienkripsi dengan kunci RS peminta. Hanya RS tersebut yang dapat membuka data.</p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Alerts -->
             <?php if(!empty($success)): ?>
             <div class="alert alert-success alert-dismissible fade show">
-                <?php echo $success; ?>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-check-circle-fill me-2" style="font-size: 1.5em;"></i>
+                    <div>
+                        <?php echo $success; ?>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <?php endif; ?>
             
             <?php if(!empty($error)): ?>
             <div class="alert alert-danger alert-dismissible fade show">
-                <?php echo $error; ?>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5em;"></i>
+                    <div>
+                        <?php echo $error; ?>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <?php endif; ?>
@@ -357,8 +357,17 @@ if(isset($_POST['kirim_data'])){
             <!-- Daftar Permintaan Masuk -->
             <div class="card">
                 <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-clock"></i> Permintaan Menunggu</h5>
-                    <small class="text-muted">Ada <?php echo count($permintaan_masuk); ?> permintaan yang perlu ditanggapi</small>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0"><i class="bi bi-clock"></i> Permintaan Menunggu</h5>
+                            <small class="text-muted">Ada <?php echo count($permintaan_masuk); ?> permintaan yang perlu ditanggapi</small>
+                        </div>
+                        <?php if(count($permintaan_masuk) > 0): ?>
+                        <span class="badge bg-danger">
+                            <i class="bi bi-exclamation-circle"></i> <?php echo count($permintaan_masuk); ?> Pending
+                        </span>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <div class="card-body">
                     <?php if(empty($permintaan_masuk)): ?>
@@ -385,11 +394,11 @@ if(isset($_POST['kirim_data'])){
                                             <p class="mb-1 text-muted small">
                                                 <i class="bi bi-card-text"></i> NIK: <?php echo htmlspecialchars($pm['pasien_nik']); ?>
                                                 <span class="mx-2">•</span>
-                                                <i class="bi bi-hospital"></i> Dari: <?php echo htmlspecialchars($pm['dari_rs']); ?>
+                                                <i class="bi bi-hospital"></i> Dari RS: <?php echo htmlspecialchars($pm['dari_rs']); ?>
                                             </p>
                                             <p class="mb-2 small">
                                                 <i class="bi bi-calendar"></i> 
-                                                Diminta: <?php echo date('d M Y', strtotime($pm['tanggal_permintaan'])); ?>
+                                                Diminta: <?php echo date('d M Y H:i', strtotime($pm['tanggal_permintaan'])); ?>
                                             </p>
                                             <p class="mb-0 small text-muted">
                                                 <i class="bi bi-chat-left-text"></i> 
@@ -401,17 +410,23 @@ if(isset($_POST['kirim_data'])){
                                 
                                 <div class="col-md-4 text-end">
                                     <?php if(($pm['urgensi'] ?? '') == 'urgent'): ?>
-                                        <span class="badge bg-danger urgensi-badge mb-2">URGENT</span>
+                                        <span class="badge bg-danger urgensi-badge mb-2">
+                                            <i class="bi bi-exclamation-triangle"></i> URGENT
+                                        </span>
                                     <?php elseif(($pm['urgensi'] ?? '') == 'biasa'): ?>
-                                        <span class="badge bg-warning urgensi-badge mb-2">BIASA</span>
+                                        <span class="badge bg-warning urgensi-badge mb-2">
+                                            <i class="bi bi-clock"></i> BIASA
+                                        </span>
                                     <?php else: ?>
-                                        <span class="badge bg-info urgensi-badge mb-2">TIDAK URGENT</span>
+                                        <span class="badge bg-info urgensi-badge mb-2">
+                                            <i class="bi bi-calendar"></i> TIDAK URGENT
+                                        </span>
                                     <?php endif; ?>
                                     
                                     <br>
                                     
-                                    <!-- Tombol Kirim Data - Trigger Modal -->
-                                    <button type="button" class="btn-send" 
+                                    <!-- Tombol Kirim Data -->
+                                    <button type="button" class="btn-send mt-2" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#kirimModal"
                                             data-id="<?php echo $pm['id']; ?>"
@@ -420,6 +435,10 @@ if(isset($_POST['kirim_data'])){
                                             data-dari-rs="<?php echo htmlspecialchars($pm['dari_rs']); ?>">
                                         <i class="bi bi-send-check"></i> Kirim Data
                                     </button>
+                                    
+                                    <div class="mt-2 small text-muted">
+                                        <i class="bi bi-key"></i> Enkripsi dengan kunci RS <?php echo htmlspecialchars($pm['dari_rs']); ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -433,10 +452,10 @@ if(isset($_POST['kirim_data'])){
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
                         <h5><i class="bi bi-check2-all text-success"></i> Data yang Telah Dikirim</h5>
-                        <p class="text-muted small">Riwayat data yang telah Anda kirim</p>
+                        <p class="text-muted small">Riwayat data yang telah Anda kirimkan</p>
                     </div>
                     <span class="badge bg-success">
-                        <?php echo count($histori_kirim); ?> data
+                        <i class="bi bi-check-circle"></i> <?php echo count($histori_kirim); ?> data
                     </span>
                 </div>
                 
@@ -458,22 +477,33 @@ if(isset($_POST['kirim_data'])){
                                     <?php echo htmlspecialchars($hk['pasien_nama']); ?>
                                 </h6>
                                 <p class="mb-1 small text-muted">
-                                    <i class="bi bi-hospital"></i> Ke: <?php echo htmlspecialchars($hk['ke_rs']); ?>
+                                    <i class="bi bi-hospital"></i> Ke RS: <?php echo htmlspecialchars($hk['dari_rs']); ?>
                                     <span class="mx-2">•</span>
                                     <i class="bi bi-calendar"></i> 
-                                    <?php echo date('d M Y', strtotime($hk['tanggal_diterima'] ?? $hk['tanggal_permintaan'])); ?>
+                                    <?php echo date('d M Y H:i', strtotime($hk['tanggal_diterima'] ?? $hk['tanggal_permintaan'])); ?>
                                 </p>
+                                <div class="small">
+                                    <i class="bi bi-key text-info"></i>
+                                    <span class="text-muted">Dienkripsi untuk RS <?php echo htmlspecialchars($hk['dari_rs']); ?></span>
+                                </div>
                             </div>
                             <div class="text-end">
                                 <?php if($is_expired): ?>
-                                    <span class="badge bg-dark">Expired</span>
+                                    <span class="badge bg-dark">
+                                        <i class="bi bi-hourglass-bottom"></i> Expired
+                                    </span>
                                 <?php else: ?>
                                     <?php 
                                     $days_left = round((strtotime($expired) - strtotime($today)) / (60 * 60 * 24));
                                     ?>
                                     <span class="badge bg-success">Aktif</span>
                                     <br>
-                                    <small class="text-muted"><?php echo $days_left; ?> hari lagi</small>
+                                    <small class="text-muted">
+                                        <?php echo $days_left; ?> hari lagi
+                                        <?php if($days_left <= 3): ?>
+                                            <br><small class="text-danger"><i class="bi bi-exclamation-triangle"></i> Segera expired</small>
+                                        <?php endif; ?>
+                                    </small>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -485,7 +515,7 @@ if(isset($_POST['kirim_data'])){
             <!-- Footer -->
             <div class="mt-4 pt-3 border-top text-center">
                 <small class="text-muted">
-                    <i class="bi bi-shield-check"></i> Semua data terenkripsi end-to-end
+                    <i class="bi bi-shield-check"></i> Semua data dienkripsi end-to-end dengan AES-256
                 </small>
             </div>
         </div>
@@ -512,6 +542,22 @@ if(isset($_POST['kirim_data'])){
                             <input type="hidden" name="permintaan_id" id="modalPermintaanId">
                             <input type="hidden" name="pasien_nik" id="modalPasienNik">
                             <input type="hidden" name="dari_rs" id="modalDariRs">
+                        </div>
+                        
+                        <!-- Info Enkripsi -->
+                        <div class="alert alert-warning mb-4">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-shield-lock me-2" style="font-size: 1.5em;"></i>
+                                <div>
+                                    <h6 class="mb-1">Informasi Enkripsi</h6>
+                                    <p class="mb-0 small">
+                                        Data akan <strong>dienkripsi dengan kunci RS peminta</strong>.
+                                        Hanya RS tersebut yang dapat membuka data ini.
+                                        <br>
+                                        <span id="encryptionInfo"></span>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- File Upload -->
@@ -620,7 +666,7 @@ if(isset($_POST['kirim_data'])){
                                 <i class="bi bi-x-circle"></i> Batal
                             </button>
                             <button type="submit" name="kirim_data" class="btn btn-primary">
-                                <i class="bi bi-send-check"></i> Kirim Data
+                                <i class="bi bi-send-check"></i> Kirim Data Terenkripsi
                             </button>
                         </div>
                     </div>
@@ -646,6 +692,7 @@ if(isset($_POST['kirim_data'])){
         document.getElementById('modalDariRs').value = dariRs;
         document.getElementById('modalPasienNama').textContent = pasienNama;
         document.getElementById('modalPasienInfo').textContent = 'NIK: ' + pasienNik + ' • Dari RS: ' + dariRs;
+        document.getElementById('encryptionInfo').textContent = 'Data akan dienkripsi dengan kunci RS ' + dariRs + '. Hanya RS ' + dariRs + ' yang dapat membuka data ini.';
         
         // Reset form
         document.getElementById('kirimForm').reset();
@@ -701,32 +748,6 @@ if(isset($_POST['kirim_data'])){
         });
     });
     
-    // Drag and drop
-    const fileUploadArea = document.querySelector('.file-upload-area');
-    fileUploadArea.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        this.style.borderColor = '#0d6efd';
-        this.style.background = '#e7f1ff';
-    });
-    
-    fileUploadArea.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        this.style.borderColor = '#dee2e6';
-        this.style.background = '#f8f9fa';
-    });
-    
-    fileUploadArea.addEventListener('drop', function(e) {
-        e.preventDefault();
-        this.style.borderColor = '#dee2e6';
-        this.style.background = '#f8f9fa';
-        
-        const fileInput = document.getElementById('fileInput');
-        if (e.dataTransfer.files.length) {
-            fileInput.files = e.dataTransfer.files;
-            previewFile();
-        }
-    });
-    
     // Form validation
     document.getElementById('kirimForm').addEventListener('submit', function(e) {
         // Validasi minimal ada file atau teks
@@ -753,6 +774,7 @@ if(isset($_POST['kirim_data'])){
         
         // Confirmation
         const pasienNama = document.getElementById('modalPasienNama').textContent;
+        const dariRs = document.getElementById('modalDariRs').value;
         const expiredDaysInput = document.querySelector('input[name="expired_days"]:checked');
         let expiredDays = expiredDaysInput.value;
         
@@ -760,9 +782,12 @@ if(isset($_POST['kirim_data'])){
             expiredDays = document.getElementById('customDays').value;
         }
         
-        const confirmMsg = `Kirim data untuk pasien:\n\n` +
-                          `${pasienNama}\n\n` +
+        const confirmMsg = `Konfirmasi Pengiriman Data Terenkripsi:\n\n` +
+                          `Pasien: ${pasienNama}\n` +
+                          `RS Tujuan: ${dariRs}\n` +
                           `Masa expired: ${expiredDays} hari\n\n` +
+                          `Data akan dienkripsi dengan kunci RS ${dariRs}.\n` +
+                          `Hanya RS ${dariRs} yang dapat membuka data ini.\n\n` +
                           `Apakah Anda yakin?`;
         
         return confirm(confirmMsg);

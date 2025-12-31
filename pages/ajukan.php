@@ -28,19 +28,12 @@ foreach($rs_tujuan_list as $rs) {
     }
 }
 
-// **AMBIL HISTORI PERMINTAAN KITA**
-$histori_permintaan_raw = getData('permintaan', "dari_rs = '$rs_kode'", 'tanggal_permintaan DESC LIMIT 10');
-
-// Filter hanya data valid
-$histori_permintaan = [];
-foreach($histori_permintaan_raw as $p) {
-    if(isset($p['id']) && 
-       isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
-       isset($p['ke_rs']) && !empty(trim($p['ke_rs'])) &&
-       isset($p['status']) && !empty(trim($p['status']))) {
-        $histori_permintaan[] = $p;
-    }
-}
+// Ambil histori permintaan kita
+$histori_permintaan = getData('permintaan', "dari_rs = '$rs_kode'");
+usort($histori_permintaan, function($a, $b) {
+    return strtotime($b['created']) - strtotime($a['created']);
+});
+$histori_permintaan = array_slice($histori_permintaan, 0, 10);
 
 // Proses form submission
 if(isset($_POST['submit_permintaan'])){
@@ -57,6 +50,8 @@ if(isset($_POST['submit_permintaan'])){
         $error = "❌ Tidak dapat mengajukan permintaan ke RS sendiri!";
     } elseif(!in_array($ke_rs, $rs_tujuan_options)) {
         $error = "❌ RS tujuan tidak valid!";
+    } elseif(strlen($pasien_nik) != 16 || !is_numeric($pasien_nik)) {
+        $error = "❌ NIK harus 16 digit angka!";
     } else {
         // Simpan ke database
         $result = createData('permintaan', [
@@ -71,9 +66,11 @@ if(isset($_POST['submit_permintaan'])){
         ]);
         
         if($result['success']){
+            $permintaan_id = $result['id'];
+            
             // Simpan histori
             createData('histori', [
-                'permintaan_id' => $result['id'],
+                'permintaan_id' => $permintaan_id,
                 'rs_id' => $rs_kode,
                 'aksi' => 'mengajukan_permintaan',
                 'keterangan' => 'Mengajukan permintaan data pasien ' . $pasien_nama . ' ke ' . $ke_rs,
@@ -82,31 +79,22 @@ if(isset($_POST['submit_permintaan'])){
             
             $success = "✅ Permintaan berhasil diajukan ke RS " . $ke_rs . "!";
             
-            // Refresh histori setelah submit
-            $histori_permintaan_raw = getData('permintaan', "dari_rs = '$rs_kode'", 'tanggal_permintaan DESC LIMIT 10');
-            $histori_permintaan = [];
-            foreach($histori_permintaan_raw as $p) {
-                if(isset($p['id']) && 
-                   isset($p['pasien_nama']) && !empty(trim($p['pasien_nama'])) &&
-                   isset($p['ke_rs']) && !empty(trim($p['ke_rs'])) &&
-                   isset($p['status']) && !empty(trim($p['status']))) {
-                    $histori_permintaan[] = $p;
-                }
-            }
+            // Refresh histori
+            $histori_permintaan = getData('permintaan', "dari_rs = '$rs_kode'");
+            usort($histori_permintaan, function($a, $b) {
+                return strtotime($b['created']) - strtotime($a['created']);
+            });
+            $histori_permintaan = array_slice($histori_permintaan, 0, 10);
             
-            // Reset form values untuk clear form
-            $pasien_nama = '';
-            $pasien_nik = '';
-            $ke_rs = '';
+            // Reset form
+            $pasien_nama = $pasien_nik = $ke_rs = $keterangan = '';
             $urgensi = 'biasa';
-            $keterangan = '';
         } else {
             $error = "❌ Gagal mengajukan permintaan. Silakan coba lagi.";
         }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -114,7 +102,20 @@ if(isset($_POST['submit_permintaan'])){
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(180deg, #2c3e50, #1a2530);
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
         .main-content {
+            margin-top: 60px;
             margin-left: 250px;
             padding: 20px;
             transition: margin-left 0.3s;
@@ -289,10 +290,17 @@ if(isset($_POST['submit_permintaan'])){
     </style>
 </head>
 <body>
-    <!-- Include sidebar -->
+    <div class="topbar">
+        <button id="sidebarToggle" class="btn btn-secondary">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="ms-auto badge bg-light text-dark">
+            <i class="bi bi-database-check"></i> Sistem Aktif
+        </div>
+    </div>
+    
     <?php include '../components/sidebar.php'; ?>
     
-    <!-- Main Content -->
     <div class="main-content">
         <div class="container">
             <!-- Header -->
@@ -311,16 +319,26 @@ if(isset($_POST['submit_permintaan'])){
             <!-- Alert -->
             <?php if(!empty($error)): ?>
             <div class="alert alert-danger alert-dismissible fade show">
-                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Error</h5>
-                <?php echo $error; ?>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5em;"></i>
+                    <div>
+                        <h5 class="alert-heading mb-1">Error</h5>
+                        <?php echo $error; ?>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <?php endif; ?>
             
             <?php if(!empty($success)): ?>
             <div class="alert alert-success alert-dismissible fade show">
-                <h5 class="alert-heading"><i class="bi bi-check-circle"></i> Sukses</h5>
-                <?php echo $success; ?>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-check-circle-fill me-2" style="font-size: 1.5em;"></i>
+                    <div>
+                        <h5 class="alert-heading mb-1">Sukses</h5>
+                        <?php echo $success; ?>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 <div class="mt-3">
                     <a href="ajukan.php" class="btn btn-sm btn-outline-success">Ajukan Lagi</a>
@@ -635,7 +653,6 @@ if(isset($_POST['submit_permintaan'])){
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Form validation and confirmation
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('permintaanForm');
         
@@ -703,17 +720,6 @@ if(isset($_POST['submit_permintaan'])){
                 
                 this.querySelector('.urgency-content').style.borderColor = '#0d6efd';
                 this.querySelector('.urgency-content').style.background = '#e7f1ff';
-            });
-        });
-        
-        // Animasi untuk histori item
-        document.querySelectorAll('.histori-item').forEach(item => {
-            item.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateX(5px)';
-            });
-            
-            item.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateX(0)';
             });
         });
     });

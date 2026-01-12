@@ -60,145 +60,148 @@ if (!$decrypted_data) {
     <title>Detail Data - <?php echo htmlspecialchars($_SESSION['rs_nama']); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/modern-theme.css">
     <style>
-        .topbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: linear-gradient(180deg, #2c3e50, #1a2530);
-            z-index: 1100;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-        }
         .main-content {
             margin-top: 60px;
-            margin-left: 250px;
-            padding: 20px;
-            min-height: 100vh;
-            background: #f8f9fa;
+            margin-left: 0;
+            padding: 32px;
+            min-height: calc(100vh - 60px);
         }
         
         @media (max-width: 768px) {
             .main-content {
-                margin-left: 0 !important;
-                padding-left: 15px;
-                padding-right: 15px;
+                padding: 20px;
             }
         }
         
-        .info-box {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left: 4px solid #0d6efd;
-        }
-        
-        .file-preview {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 2px dashed #dee2e6;
-        }
-        
-        .data-content {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .btn-download {
-            background: linear-gradient(45deg, #198754, #157347);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            text-decoration: none;
-            display: inline-flex;
+        /* Watermark Overlay */
+        .watermark-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            gap: 8px;
-            transition: all 0.3s;
+            opacity: 0.1;
+            user-select: none;
+            overflow: hidden;
         }
         
-        .btn-download:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(25, 135, 84, 0.3);
-            color: white;
+        .watermark-text {
+            font-size: 3em;
+            font-weight: 800;
+            color: var(--dark);
+            transform: rotate(-30deg);
+            text-align: center;
+            line-height: 1.5;
+            text-transform: uppercase;
+            letter-spacing: 5px;
         }
         
-        .expired-warning {
-            background: linear-gradient(45deg, #ffc107, #fd7e14);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .decryption-success {
-            background: linear-gradient(45deg, #198754, #157347);
-            color: white;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
+        .watermark-info {
+            font-size: 1.2em;
+            color: var(--secondary);
+            margin-top: 20px;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
-    <div class="topbar">
-        <button id="sidebarToggle" class="btn btn-secondary">
-            <i class="bi bi-list"></i>
-        </button>
-        <div class="ms-auto badge bg-light text-dark">
-            <i class="bi bi-shield-check"></i> Data Terenkripsi
-        </div>
-    </div>
+    <?php include '../components/topbar.php'; ?>
     
     <?php include '../components/sidebar.php'; ?>
     
     <div class="main-content">
         <div class="container">
             <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-5">
                 <div>
-                    <h3><i class="bi bi-file-earmark-medical text-primary"></i> Detail Data Pasien</h3>
-                    <p class="text-muted">Data dari <?php echo htmlspecialchars($permintaan['ke_rs']); ?></p>
+                    <h2 class="fw-bold text-dark"><i class="bi bi-file-earmark-medical text-primary me-2"></i>Detail Data Pasien</h2>
+                    <p class="text-muted">Berkas medis digital dari RS <strong class="text-primary"><?php echo htmlspecialchars($permintaan['ke_rs']); ?></strong></p>
                 </div>
                 <div>
-                    <a href="berkas.php" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Kembali
+                    <a href="berkas.php" class="btn-modern btn-secondary-modern px-4">
+                        <i class="bi bi-arrow-left me-2"></i>Kembali
                     </a>
                 </div>
             </div>
             
             <!-- Info Dekripsi Berhasil -->
-            <div class="decryption-success">
+            <div class="alert-modern alert-success mb-4 p-4 shadow-sm border-0 bg-white">
                 <div class="d-flex align-items-center">
-                    <i class="bi bi-check-circle-fill me-3" style="font-size: 2em;"></i>
+                    <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center p-3 me-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-shield-check-fill fs-2"></i>
+                    </div>
                     <div>
-                        <h5 class="mb-1">Data Berhasil Didekripsi!</h5>
-                        <p class="mb-0">Menggunakan kunci RS <?php echo htmlspecialchars($rs_kode); ?></p>
+                        <h5 class="fw-bold text-dark mb-1">Dekripsi Berhasil</h5>
+                        <p class="text-muted mb-0">Data telah didekripsi aman menggunakan kunci privat RS <?php echo htmlspecialchars($rs_kode); ?></p>
                     </div>
                 </div>
             </div>
             
+            <?php
+            // Mark as read jika belum dibaca
+            if(empty($permintaan['is_read']) || $permintaan['is_read'] == false) {
+                updateData('permintaan', $permintaan['id'], ['is_read' => true]);
+            }
+            ?>
+            
             <!-- Info Pasien -->
-            <div class="info-box">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5><i class="bi bi-person-circle"></i> Informasi Pasien</h5>
-                        <p><strong>Nama:</strong> <?php echo htmlspecialchars($permintaan['pasien_nama']); ?></p>
-                        <p><strong>NIK:</strong> <?php echo htmlspecialchars($permintaan['pasien_nik']); ?></p>
+            <!-- Info Pasien -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="content-card h-100">
+                        <h5 class="fw-bold mb-4 border-bottom pb-2"><i class="bi bi-person-bounding-box text-primary me-2"></i>Informasi Pasien</h5>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded me-3">
+                                <i class="bi bi-person fs-5"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block">Nama Lengkap</small>
+                                <span class="fw-bold text-dark fs-5"><?php echo htmlspecialchars($permintaan['pasien_nama']); ?></span>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded me-3">
+                                <i class="bi bi-card-text fs-5"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block">Nomor Induk Kependudukan (NIK)</small>
+                                <span class="fw-bold text-dark fs-5"><?php echo htmlspecialchars($permintaan['pasien_nik']); ?></span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <h5><i class="bi bi-info-circle"></i> Informasi Permintaan</h5>
-                        <p><strong>RS Pengirim:</strong> <?php echo htmlspecialchars($permintaan['ke_rs']); ?></p>
-                        <p><strong>Tanggal Dikirim:</strong> <?php echo date('d M Y H:i', strtotime($permintaan['tanggal_diterima'])); ?></p>
-                        <p><strong>Expired:</strong> <?php echo date('d M Y', strtotime($permintaan['tanggal_expired'])); ?></p>
-                        <p><strong>Dikirim Oleh:</strong> <?php echo htmlspecialchars($decrypted_data['dikirim_oleh'] ?? 'RS'); ?></p>
+                </div>
+                <div class="col-md-6">
+                    <div class="content-card h-100">
+                        <h5 class="fw-bold mb-4 border-bottom pb-2"><i class="bi bi-info-circle text-primary me-2"></i>Detail Permintaan</h5>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <small class="text-muted d-block mb-1">RS Pengirim</small>
+                                <div class="badge bg-light text-primary border px-3 py-2">
+                                    <i class="bi bi-hospital me-1"></i> <?php echo htmlspecialchars($permintaan['ke_rs']); ?>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block mb-1">Dikirim Oleh</small>
+                                <div class="fw-bold text-dark"><i class="bi bi-person-check me-1"></i> <?php echo htmlspecialchars($decrypted_data['dikirim_oleh'] ?? 'Admin RS'); ?></div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block mb-1">Tanggal Diterima</small>
+                                <div class="fw-bold text-dark"><?php echo date('d M Y, H:i', strtotime($permintaan['tanggal_diterima'])); ?></div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block mb-1">Berlaku Hingga</small>
+                                <div class="fw-bold text-danger"><?php echo date('d M Y', strtotime($permintaan['tanggal_expired'])); ?></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -209,9 +212,12 @@ if (!$decrypted_data) {
             $days_left = round((strtotime($expired_date) - strtotime($today)) / (60 * 60 * 24));
             
             if ($days_left <= 3): ?>
-            <div class="expired-warning">
-                <i class="bi bi-exclamation-triangle"></i>
-                <strong>Perhatian!</strong> Data akan expired dalam <?php echo $days_left; ?> hari
+            <div class="alert-modern alert-warning mb-4">
+                <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
+                <div class="flex-grow-1">
+                    <strong>Masa Berlaku Hampir Habis!</strong><br>
+                    Data ini akan kadaluarsa dan dihapus otomatis dalam <strong><?php echo $days_left; ?> hari</strong>. Segera unduh jika diperlukan.
+                </div>
             </div>
             <?php endif; ?>
             
@@ -241,6 +247,9 @@ if (!$decrypted_data) {
                         </div>
                     </div>
                     
+                <div class="content-card mb-4" id="file-viewer-section">
+                    <h5 class="fw-bold mb-4 border-bottom pb-2"><i class="bi bi-file-earmark-medical text-primary me-2"></i>Berkas Medis Digital</h5>
+                    
                     <!-- Tampilkan file berdasarkan tipe -->
                     <?php 
                     $file_type = $file_data['file_type'] ?? '';
@@ -250,33 +259,74 @@ if (!$decrypted_data) {
                     
                     <div class="mb-3">
                         <?php if ($is_pdf && file_exists($file_path)): ?>
-                            <iframe src="<?php echo $file_path; ?>" 
-                                    width="100%" 
-                                    height="600px" 
-                                    style="border: 1px solid #dee2e6; border-radius: 5px;">
-                                Browser Anda tidak mendukung preview PDF. < href="<?php echo $file_path; ?>"
-                            </iframe>
+                            <!-- Secure PDF Viewer using PDF.js -->
+                            <div id="pdf-viewer-container" class="bg-secondary p-4 rounded-3 shadow-inner" style="max-height: 800px; overflow-y: auto; text-align: center; position: relative;" oncontextmenu="return false;">
+                                <!-- Watermark Overlay -->
+                                <div class="watermark-overlay">
+                                    <div class="watermark-text">
+                                        CONFIDENTIAL<br>
+                                        <?php echo htmlspecialchars($rs_kode); ?><br>
+                                        <span class="watermark-info"><?php echo date('d M Y H:i:s', strtotime($permintaan['tanggal_diterima'])); ?></span>
+                                    </div>
+                                </div>
+                                
+                                <div id="pdf-loader" class="text-white">
+                                    <div class="spinner-border text-light" role="status"></div>
+                                    <p class="mt-2">Memuat dokumen aman...</p>
+                                </div>
+                                <div id="pdf-canvas-container"></div>
+                            </div>
+                            <!-- PDF.js Script (unchanged) -->
+                            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+                            <script>
+                                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                                const url = '<?php echo $file_path; ?>';
+                                const container = document.getElementById('pdf-canvas-container');
+                                const loader = document.getElementById('pdf-loader');
+                                pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                                    loader.style.display = 'none';
+                                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                                        pdf.getPage(pageNum).then(function(page) {
+                                            const scale = 1.5;
+                                            const viewport = page.getViewport({scale: scale});
+                                            const canvas = document.createElement('canvas');
+                                            canvas.className = 'mb-3 shadow-sm rounded';
+                                            canvas.style.maxWidth = '100%';
+                                            canvas.style.height = 'auto';
+                                            canvas.oncontextmenu = function(e) { e.preventDefault(); return false; };
+                                            const context = canvas.getContext('2d');
+                                            canvas.height = viewport.height;
+                                            canvas.width = viewport.width;
+                                            container.appendChild(canvas);
+                                            const renderContext = { canvasContext: context, viewport: viewport };
+                                            page.render(renderContext);
+                                        });
+                                    }
+                                }).catch(function(error) {
+                                    loader.innerHTML = '<div class="alert-modern alert-danger">Gagal memuat dokumen.</div>';
+                                    console.error('Error loading PDF:', error);
+                                });
+                            </script>
                         <?php elseif ($is_image && file_exists($file_path)): ?>
-                            <div class="text-center">
+                            <div class="text-center p-3 bg-light rounded-3 border border-1">
                                 <img src="<?php echo $file_path; ?>" 
                                      alt="Preview" 
-                                     class="img-fluid rounded" 
-                                     style="max-height: 500px;">
+                                     class="img-fluid rounded shadow-sm" 
+                                     style="max-height: 500px;"
+                                     oncontextmenu="return false;">
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle"></i>
-                                File tidak dapat dipreview secara langsung. Silakan download untuk melihat.
+                            <div class="alert-modern alert-info mb-0">
+                                <i class="bi bi-info-circle-fill fs-5 text-info"></i>
+                                <div class="flex-grow-1">File tidak dapat dipreview secara langsung.</div>
                             </div>
                         <?php endif; ?>
                     </div>
                     
-                    <!-- Tombol Download -->
-                    <?php if (file_exists($file_path)): ?>
-                    <?php else: ?>
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        File tidak ditemukan di server.
+                    <?php if (!file_exists($file_path)): ?>
+                    <div class="alert-modern alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+                        <div class="flex-grow-1">File tidak ditemukan di server.</div>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -284,9 +334,9 @@ if (!$decrypted_data) {
                 
                 <!-- Text Data -->
                 <?php if (isset($decrypted_data['riwayat_medis']) && !empty(trim($decrypted_data['riwayat_medis']))): ?>
-                <div class="data-content">
-                    <h5><i class="bi bi-text-paragraph text-info"></i> Riwayat Medis</h5>
-                    <div class="p-3 bg-light rounded" style="white-space: pre-line;">
+                <div class="content-card mb-4" id="medical-history-section">
+                    <h5 class="fw-bold mb-4 border-bottom pb-2"><i class="bi bi-file-text text-primary me-2"></i>Riwayat Medis Pasien</h5>
+                    <div class="p-4 bg-light rounded-3 border" style="white-space: pre-line; font-family: 'Inter', sans-serif; line-height: 1.6;">
                         <?php echo nl2br(htmlspecialchars($decrypted_data['riwayat_medis'])); ?>
                     </div>
                 </div>
@@ -294,18 +344,21 @@ if (!$decrypted_data) {
                 
                 <!-- Keterangan Tambahan -->
                 <?php if (isset($decrypted_data['keterangan_tambahan']) && !empty(trim($decrypted_data['keterangan_tambahan']))): ?>
-                <div class="data-content">
-                    <h5><i class="bi bi-chat-left-text text-success"></i> Keterangan Tambahan</h5>
-                    <div class="p-3 bg-light rounded">
+                <div class="content-card mb-4">
+                    <h5 class="fw-bold mb-4 border-bottom pb-2"><i class="bi bi-chat-left-text text-primary me-2"></i>Catatan Tambahan</h5>
+                    <div class="p-4 bg-light rounded-3 border">
                         <?php echo htmlspecialchars($decrypted_data['keterangan_tambahan']); ?>
                     </div>
                 </div>
                 <?php endif; ?>
                 
             <?php else: ?>
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Gagal mendekripsi data. Mungkin kunci enkripsi tidak sesuai.
+                <div class="alert-modern alert-danger p-5 text-center">
+                    <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-inline-flex p-3 mb-3">
+                        <i class="bi bi-exclamation-triangle-fill fs-1"></i>
+                    </div>
+                    <h5 class="fw-bold">Gagal Mendekripsi Data</h5>
+                    <p class="mb-0">Kunci enkripsi tidak sesuai atau data telah rusak.</p>
                 </div>
             <?php endif; ?>
             
@@ -319,5 +372,22 @@ if (!$decrypted_data) {
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Security Scripts
+    document.addEventListener('keydown', function(e) {
+        // Block Ctrl+S (Save), Ctrl+P (Print), Ctrl+U (Source)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'p' || e.key === 'u')) {
+            e.preventDefault();
+            alert('Fitur ini dinonaktifkan untuk keamanan data.');
+            return false;
+        }
+    });
+
+    // Disable Right Click Globally
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
+    </script>
 </body>
 </html>

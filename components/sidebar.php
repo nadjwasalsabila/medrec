@@ -2,7 +2,8 @@
 if (!isset($_SESSION)) session_start();
 
 $root_dir = dirname(dirname(__FILE__));
-$is_in_pages = (strpos($_SERVER['PHP_SELF'], '/pages/') !== false);
+$current_script = str_replace('\\', '/', $_SERVER['PHP_SELF']);
+$is_in_pages = (stripos($current_script, '/pages/') !== false);
 $base_path = $is_in_pages ? '../' : './';
 
 $db_loaded = false;
@@ -25,11 +26,23 @@ if ($db_loaded && isset($_SESSION['rs_kode'])) {
              AND (tanggal_expired IS NULL OR tanggal_expired>='$today')"
         ));
 
-        $archive_count = count(getData(
+        // Hitung berkas diterima (sementara tanpa is_read check)
+        $archive_data = getData(
             'permintaan',
             "dari_rs='$rs_kode' AND status='diterima'
              AND (tanggal_expired IS NULL OR tanggal_expired>='$today')"
-        ));
+        );
+        
+        // Filter hanya yang belum dibuka (jika kolom is_read ada)
+        $unread_count = 0;
+        foreach($archive_data as $item) {
+            // Jika is_read tidak ada atau false, hitung sebagai unread
+            if(!isset($item['is_read']) || $item['is_read'] === false || $item['is_read'] === null) {
+                $unread_count++;
+            }
+        }
+        
+        $archive_count = $unread_count;
     } catch (Exception $e) {
         error_log($e->getMessage());
     }
@@ -37,42 +50,60 @@ if ($db_loaded && isset($_SESSION['rs_kode'])) {
 ?>
 
 <nav class="sidebar" id="sidebar">
-    <div class="sidebar-header p-3 text-white">
-        <h4 class="mb-1">🏥 <?= htmlspecialchars($_SESSION['rs_kode'] ?? 'RS') ?></h4>
-        <p class="mb-0 small"><?= htmlspecialchars($_SESSION['rs_nama'] ?? 'Nama RS') ?></p>
+    
+    <!-- User Info -->
+    <div class="user-info">
+        <p class="small text-muted mb-0">Logged in as:</p>
+        <p class="fw-bold mb-0"><?= htmlspecialchars($_SESSION['rs_nama'] ?? 'Nama RS') ?></p>
+        <p class="small text-muted"><?= htmlspecialchars($_SESSION['rs_kode'] ?? 'RS001') ?></p>
     </div>
 
-    <hr class="bg-white mx-3">
-
-    <ul class="list-unstyled components">
-        <li><a href="<?= $base_path ?>dashboard.php" id="dashboard-link"><i class="bi bi-house"></i> Dashboard</a></li>
-        <li><a href="<?= $base_path ?>pages/ajukan.php" id="ajukan-link"><i class="bi bi-send"></i> Ajukan Permintaan</a></li>
+    <!-- Menu Items -->
+    <ul class="list-unstyled sidebar-menu">
         <li>
-            <a href="<?= $base_path ?>pages/terima.php" id="terima-link">
-                <i class="bi bi-inbox"></i> Permintaan Masuk
+            <a href="<?= $base_path ?>dashboard.php" id="dashboard-link" class="menu-item">
+                <i class="bi bi-grid-fill"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+        <li>
+            <a href="<?= $base_path ?>pages/ajukan.php" id="ajukan-link" class="menu-item">
+                <i class="bi bi-send-fill"></i>
+                <span>Ajukan Permintaan</span>
+            </a>
+        </li>
+        <li>
+            <a href="<?= $base_path ?>pages/terima.php" id="terima-link" class="menu-item">
+                <i class="bi bi-inbox-fill"></i>
+                <span>Permintaan Masuk</span>
                 <?php if ($pending_count > 0): ?>
-                    <span class="urgent-badge float-end"><?= $pending_count ?></span>
+                    <span class="badge bg-danger ms-auto"><?= $pending_count ?></span>
                 <?php endif; ?>
             </a>
         </li>
         <li>
-            <a href="<?= $base_path ?>pages/berkas.php" id="berkas-link">
-                <i class="bi bi-folder-check"></i> Berkas Diterima
+            <a href="<?= $base_path ?>pages/berkas.php" id="berkas-link" class="menu-item">
+                <i class="bi bi-folder-check"></i>
+                <span>Berkas Diterima</span>
                 <?php if ($archive_count > 0): ?>
-                    <span class="badge bg-info float-end"><?= $archive_count ?></span>
+                    <span class="badge bg-info ms-auto"><?= $archive_count ?></span>
                 <?php endif; ?>
             </a>
         </li>
-        <li><a href="<?= $base_path ?>pages/histori.php" id="histori-link"><i class="bi bi-clock-history"></i> Histori</a></li>
+        <li>
+            <a href="<?= $base_path ?>pages/histori.php" id="histori-link" class="menu-item">
+                <i class="bi bi-clock-history"></i>
+                <span>Histori</span>
+            </a>
+        </li>
+        <li>
+            <a href="<?= $base_path ?>logout.php" class="menu-item text-danger"
+               onclick="return confirm('Yakin ingin logout?')">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </a>
+        </li>
     </ul>
-
-    <div class="mt-auto">
-        <hr class="bg-white mx-3">
-        <a href="<?= $base_path ?>logout.php" class="text-danger px-4 d-block"
-           onclick="return confirm('Yakin ingin logout?')">
-            <i class="bi bi-box-arrow-right"></i> Logout
-        </a>
-    </div>
 </nav>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -80,158 +111,153 @@ if ($db_loaded && isset($_SESSION['rs_kode'])) {
 <style>
 :root {
     --topbar-height: 60px;
-    --sidebar-width: 250px; /* SAMA dengan sidebar.php */
+    --sidebar-width: 220px;
+    --primary-blue: #4F7CFF;
 }
 
 .sidebar {
     position: fixed;
     top: 60px;
     left: 0;
-    width: 250px;
+    width: var(--sidebar-width);
     height: calc(100vh - 60px);
-    background: linear-gradient(180deg, #2c3e50, #1a2530);
+    background: #ffffff;
+    border-right: 1px solid #e5e7eb;
     transform: translateX(-100%);
     transition: transform .3s ease;
     z-index: 1000;
+    overflow-y: auto;
 }
 
-/* Sidebar 
-.sidebar {
-    position: fixed;
-    left: -260px;
-    top: var(--topbar-height);
-    width: 260px;
-    height: calc(100vh - var(--topbar-height));
-    transition: left 0.3s ease;
-    z-index: 1000;
-}*/
-.sidebar-header {
+.sidebar.active { 
+    transform: translateX(0); 
+}
+
+/* Logo */
+.sidebar-logo {
     padding: 24px 20px;
-    text-align: center; /* INI KUNCI */
+    text-align: center;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.sidebar-header h4 {
-    font-weight: 600;
-    margin-bottom: 4px;
+.logo-text {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin: 0;
+    color: #1f2937;
 }
 
-.sidebar-header p {
-    font-size: 13px;
-    opacity: 0.85;
+.logo-text .text-primary {
+    color: var(--primary-blue) !important;
 }
 
-/* JARAK ANTAR MENU */
-.sidebar .components li {
-    margin: 6px 0; /* jarak antar item */
+/* User Info */
+.user-info {
+    padding: 16px 20px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.sidebar .components a {
-    padding: 14px 22px; /* bikin item lebih tinggi */
-    border-radius: 6px;
+.user-info p {
+    line-height: 1.4;
 }
-.sidebar .components a {
+
+/* Menu */
+.sidebar-menu {
+    padding: 12px 12px; /* Added horizontal padding for floating effect */
+    margin: 0;
+}
+
+.sidebar-menu li {
+    margin: 4px 0; /* Vertical spacing between items */
+}
+
+.menu-item {
     display: flex;
     align-items: center;
+    padding: 12px 16px;
+    color: #6b7280 !important;
+    text-decoration: none !important;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-radius: 8px; /* Rounded corners for all items */
+    /* border-left removed */
 }
 
-.sidebar .components a i {
+.menu-item i {
     width: 20px;
-    text-align: center;
+    margin-right: 12px;
+    font-size: 18px; /* Slightly larger icons */
 }
 
-.sidebar.active { transform: translateX(0); }
+.menu-item span {
+    flex: 1;
+}
 
+.menu-item:hover {
+    background: #f3f4f6;
+    color: #1f2937 !important;
+}
+
+.menu-item.active {
+    background: var(--primary-blue);
+    color: white !important;
+    box-shadow: 0 4px 6px rgba(79, 124, 255, 0.2); /* Soft shadow */
+}
+
+.menu-item.text-danger {
+    color: #dc2626 !important;
+}
+
+.menu-item.text-danger:hover {
+    background: #fef2f2;
+}
+
+/* Badge */
+.menu-item .badge {
+    font-size: 11px !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 600 !important;
+    aspect-ratio: 1 / 1;
+    line-height: 1 !important;
+}
+
+/* Overlay */
 .sidebar-overlay {
     position: fixed;
     top: 60px;
     inset: 0;
-    background: transparant;
+    background: rgba(0,0,0,0.3);
     display: none;
     z-index: 999;
 }
-.sidebar-overlay.active { display: block; }
-/* RESET LINK SIDEBAR BIAR RAPI KAYA AWAL */
-.sidebar a {
-    color: #ecf0f1 !important;
-    text-decoration: none !important;
-    font-weight: 500;
+
+.sidebar-overlay.active { 
+    display: block; 
 }
 
-.sidebar a i {
-    margin-right: 8px;
-}
-
-.sidebar a:hover {
-    color: #ffffff !important;
-    background: rgba(52, 73, 94, 0.8);
-}
-
-.sidebar a.active {
-    background: rgba(52, 152, 219, 0.2);
-    border-left: 4px solid #2980b9;
-    color: #ffffff !important;
-}
-/* ===============================
-   BADGE STYLE FIX
-================================ */
-
-/* Badge merah (urgent / pending) */
-.urgent-badge {
-    background: #e74c3c;
-    color: #fff;
-    min-width: 26px;
-    height: 26px;
-    border-radius: 50%; /* BUNDER */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    margin-left: auto;
-}
-
-/* Badge biru (arsip / berkas) */
-.badge.bg-info {
-    background: #0dcaf0 !important;
-    color: #fff;
-    min-width: 32px;
-    height: 26px;
-    border-radius: 6px; /* KOTAK */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    margin-left: auto;
-}
-
-/* Sidebar aktif */
-.sidebar.sidebar-open {
-    left: 0;
-}
-
-/* Konten utama */
-.main-content,
-.content-wrapper {
+/* Main Content */
+.main-content {
     transition: margin-left 0.3s ease;
     margin-left: 0;
     margin-top: var(--topbar-height);
 }
 
-
-/* Saat sidebar aktif, konten geser */
-.sidebar-open ~ .main-content,
-.sidebar-open ~ .content-wrapper {
-    margin-left: 260px;
-}
 @media (min-width: 992px) {
-    body.sidebar-open .main-content,
-    body.sidebar-open .content-wrapper {
+    body.sidebar-open .main-content {
         margin-left: var(--sidebar-width);
     }
 }
-
-
 </style>
 
 <script>
@@ -239,12 +265,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const toggle = document.getElementById('sidebarToggle');
+    
+    // Get current page
+    const currentPath = window.location.pathname;
+    const menuLinks = document.querySelectorAll('.menu-item');
+    
+    // Set active menu
+    menuLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (currentPath.includes(href.replace('../', '').replace('./', ''))) {
+            link.classList.add('active');
+        }
+    });
 
     function toggleSidebar() {
         sidebar.classList.toggle('active');
         overlay.classList.toggle('active');
-
-        // 🔥 INI YANG KURANG
         document.body.classList.toggle('sidebar-open');
     }
 
@@ -252,4 +288,3 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.addEventListener('click', toggleSidebar);
 });
 </script>
-

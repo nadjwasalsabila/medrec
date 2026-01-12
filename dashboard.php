@@ -10,9 +10,6 @@ $rs_nama = $_SESSION['rs_nama'];
 
 require_once 'config/database.php';
 
-// **HAPUS SEMUA DEBUG LOGGING**
-// Ambil statistik tanpa logging
-
 // Hitung permintaan masuk (ke RS kita, status pending)
 $permintaan_masuk = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'pending'");
 $jumlah_masuk = count($permintaan_masuk);
@@ -27,7 +24,7 @@ foreach($permintaan_kita_all as $p) {
 }
 $jumlah_kita = count($permintaan_kita);
 
-// Hitung permintaan diterima (status diterima)
+// Hitung permintaan diterima
 $diterima_count = 0;
 foreach($permintaan_kita as $p) {
     if(isset($p['status']) && $p['status'] == 'diterima') {
@@ -35,7 +32,7 @@ foreach($permintaan_kita as $p) {
     }
 }
 
-// Hitung permintaan ditolak (status ditolak)
+// Hitung permintaan ditolak
 $ditolak_count = 0;
 foreach($permintaan_kita as $p) {
     if(isset($p['status']) && $p['status'] == 'ditolak') {
@@ -48,343 +45,510 @@ $recent_permintaan = array_slice($permintaan_kita, 0, 5);
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - <?php echo htmlspecialchars($rs_nama); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .topbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: linear-gradient(180deg, #2c3e50, #1a2530);
-            z-index: 1100;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+        }
+
         .main-content {
             margin-top: 60px;
-            margin-left: 250px;
-            padding: 20px;
-            transition: margin-left 0.3s;
-            min-height: 100vh;
-            background: #f8f9fa;
+            margin-left: 0;
+            padding: 32px;
+            min-height: calc(100vh - 60px);
+        }
+        
+        /* Welcome Hero Card */
+        .hero-card {
+            background: #4F7CFF;
+            border-radius: 24px;
+            padding: 48px;
+            color: white;
+            margin-bottom: 32px;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        .hero-card h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            position: relative;
+        }
+        
+        .hero-card p {
+            font-size: 1.125rem;
+            opacity: 0.95;
+            position: relative;
+        }
+        
+        .hero-icon {
+            font-size: 5rem;
+            opacity: 0.2;
+            position: absolute;
+            right: 48px;
+            bottom: 24px;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--accent-color);
+            transition: width 0.4s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-12px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+        }
+        
+        .stat-card:hover::before {
+            width: 100%;
+            opacity: 0.08;
+        }
+        
+        .stat-icon-wrapper {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            background: var(--accent-color);
+            box-shadow: 0 8px 16px var(--shadow-color);
+        }
+        
+        .stat-icon-wrapper i {
+            font-size: 28px;
+            color: white;
+        }
+        
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #1a202c;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 0.9375rem;
+            color: #718096;
+            font-weight: 500;
+        }
+        
+        .stat-trend {
+            font-size: 0.875rem;
+            color: #48bb78;
+            margin-top: 8px;
+        }
+        
+        /* Color Variants */
+        .stat-incoming {
+            --accent-color: #8b5cf6;
+            --shadow-color: rgba(139, 92, 246, 0.3);
+        }
+        
+        .stat-outgoing {
+            --accent-color: #4F7CFF;
+            --shadow-color: rgba(79, 124, 255, 0.3);
+        }
+        
+        .stat-accepted {
+            --accent-color: #10b981;
+            --shadow-color: rgba(16, 185, 129, 0.3);
+        }
+        
+        .stat-rejected {
+            --accent-color: #ef4444;
+            --shadow-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Section Title */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin: 0;
+        }
+        
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        /* Quick Actions */
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .quick-action-card {
+            background: white;
+            border-radius: 20px;
+            padding: 32px 24px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .quick-action-card:hover {
+            transform: translateY(-8px);
+            border-color: #4F7CFF;
+            box-shadow: 0 16px 32px rgba(79, 124, 255, 0.2);
+        }
+        
+        .quick-action-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+        
+        .quick-action-card:hover .quick-action-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+        
+        .quick-action-icon i {
+            font-size: 32px;
+            color: white;
+        }
+        
+        .quick-action-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+        
+        .quick-action-desc {
+            font-size: 0.875rem;
+            color: #718096;
+            margin: 0;
+        }
+        
+        /* Recent Activity */
+        .activity-card {
+            background: white;
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+            background: #f8fafc;
+        }
+        
+        .activity-item:hover {
+            background: #f1f5f9;
+            transform: translateX(8px);
+        }
+        
+        .activity-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .activity-icon.icon-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .activity-icon.icon-inbox {
+            background: linear-gradient(135deg, #4F7CFF 0%, #3b5bdb 100%);
+            color: white;
+        }
+        
+        .activity-content {
+            flex: 1;
+        }
+        
+        .activity-title {
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+        
+        .activity-meta {
+            font-size: 0.875rem;
+            color: #718096;
+        }
+        
+        .activity-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8125rem;
+            font-weight: 600;
+        }
+        
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .badge-accepted {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #94a3b8;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
         }
         
         @media (max-width: 768px) {
             .main-content {
-                margin-left: 0 !important;
-                padding-left: 15px;
-                padding-right: 15px;
+                padding: 20px;
             }
-        }
-        
-        .stat-card {
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            color: white;
-            text-align: center;
-            transition: transform 0.3s;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        .stat-card i {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-        .card-incoming {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
-        }
-        .card-outgoing {
-            background: linear-gradient(45deg, #48dbfb, #0abde3);
-        }
-        .card-accepted {
-            background: linear-gradient(45deg, #1dd1a1, #10ac84);
-        }
-        .card-rejected {
-            background: linear-gradient(45deg, #ff9ff3, #f368e0);
-        }
-        .recent-item {
-            border-left: 4px solid #0d6efd;
-            padding: 15px;
-            margin-bottom: 10px;
-            background: white;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-        .recent-item:hover {
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-            transform: translateX(5px);
-        }
-        .status-badge {
-            font-size: 0.75em;
-            padding: 3px 8px;
-            border-radius: 15px;
-        }
-        .welcome-card {
-            background: linear-gradient(45deg, #6a11cb, #2575fc);
-            color: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-        }
-        .quick-action {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid #dee2e6;
-            transition: all 0.3s;
-        }
-        .quick-action:hover {
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            border-color: #0d6efd;
-        }
-        .quick-action i {
-            font-size: 2em;
-            margin-bottom: 15px;
-            color: #0d6efd;
+            
+            .hero-card {
+                padding: 32px 24px;
+            }
+            
+            .hero-card h1 {
+                font-size: 1.75rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="topbar">
-        <button id="sidebarToggle" class="btn btn-secondary">
-            <i class="bi bi-list"></i>
-        </button>
-        <div class="ms-auto badge bg-linear-gradient(180deg, #2c3e50, #1a2530)">Sistem Aktif</div>
-    </div>
-    <!-- Include sidebar -->
+    <?php include 'components/topbar.php'; ?>
     <?php include 'components/sidebar.php'; ?>
     
-    <!-- Main Content -->
     <div class="main-content">
-        <div class="container-fluid">
-            <!-- Welcome Card -->
-            <div class="welcome-card mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h2>Selamat Datang, <?php echo htmlspecialchars($rs_nama); ?>!</h2>
-                        <p class="mb-0">Sistem Rekam Medis Elektronik Terenkripsi</p>
-                    </div>
-                    <div class="col-md-4 text-end">
-                        <i class="bi bi-hospital" style="font-size: 4em; opacity: 0.8;"></i>
-                    </div>
+        <!-- Hero Welcome Card -->
+        <div class="hero-card">
+            <h1>Selamat Datang, <?php echo htmlspecialchars($rs_nama); ?>!</h1>
+            <p>Sistem Rekam Medis Elektronik Terenkripsi End-to-End</p>
+            <i class="bi bi-hospital hero-icon"></i>
+        </div>
+        
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card stat-incoming">
+                <div class="stat-icon-wrapper">
+                    <i class="bi bi-inbox-fill"></i>
                 </div>
+                <div class="stat-number"><?php echo $jumlah_masuk; ?></div>
+                <div class="stat-label">Permintaan Masuk</div>
+                <div class="stat-trend"><i class="bi bi-arrow-up"></i> Menunggu respon</div>
             </div>
             
-            <!-- Statistics -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="stat-card card-incoming">
-                        <i class="bi bi-inbox"></i>
-                        <div class="stat-value"><?php echo $jumlah_masuk; ?></div>
-                        <div class="stat-label">Permintaan Masuk</div>
-                    </div>
+            <div class="stat-card stat-outgoing">
+                <div class="stat-icon-wrapper">
+                    <i class="bi bi-send-fill"></i>
                 </div>
-                <div class="col-md-3">
-                    <div class="stat-card card-outgoing">
-                        <i class="bi bi-send"></i>
-                        <div class="stat-value"><?php echo $jumlah_kita; ?></div>
-                        <div class="stat-label">Permintaan Diajukan</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card card-accepted">
-                        <i class="bi bi-check-circle"></i>
-                        <div class="stat-value"><?php echo $diterima_count; ?></div>
-                        <div class="stat-label">Diterima</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card card-rejected">
-                        <i class="bi bi-x-circle"></i>
-                        <div class="stat-value"><?php echo $ditolak_count; ?></div>
-                        <div class="stat-label">Ditolak</div>
-                    </div>
-                </div>
+                <div class="stat-number"><?php echo $jumlah_kita; ?></div>
+                <div class="stat-label">Permintaan Diajukan</div>
+                <div class="stat-trend"><i class="bi bi-graph-up"></i> Total diajukan</div>
             </div>
             
-            <!-- Quick Actions -->
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <h4><i class="bi bi-lightning-charge text-warning"></i> Akses Cepat</h4>
+            <div class="stat-card stat-accepted">
+                <div class="stat-icon-wrapper">
+                    <i class="bi bi-check-circle-fill"></i>
                 </div>
-                <div class="col-md-3">
-                    <a href="pages/ajukan.php" class="text-decoration-none">
-                        <div class="quick-action">
-                            <i class="bi bi-send-plus"></i>
-                            <h6>Ajukan Permintaan</h6>
-                            <p class="small text-muted">Minta data ke RS lain</p>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-md-3">
-                    <a href="pages/terima.php" class="text-decoration-none">
-                        <div class="quick-action">
-                            <i class="bi bi-inbox"></i>
-                            <h6>Permintaan Masuk</h6>
-                            <p class="small text-muted">
-                                <?php echo $jumlah_masuk; ?> menunggu
-                            </p>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-md-3">
-                    <a href="pages/berkas.php" class="text-decoration-none">
-                        <div class="quick-action">
-                            <i class="bi bi-archive"></i>
-                            <h6>Arsip Permintaan</h6>
-                            <p class="small text-muted">
-                                <?php echo $jumlah_kita; ?> permintaan
-                            </p>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-md-3">
-                    <div class="quick-action">
-                        <i class="bi bi-shield-check"></i>
-                        <h6>Keamanan Data</h6>
-                        <p class="small text-muted">Terenkripsi end-to-end</p>
-                    </div>
-                </div>
+                <div class="stat-number"><?php echo $diterima_count; ?></div>
+                <div class="stat-label">Diterima</div>
+                <div class="stat-trend"><i class="bi bi-check2"></i> Berhasil diterima</div>
             </div>
             
-            <!-- Recent Requests -->
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Permintaan Terbaru</h5>
-                        </div>
-                        <div class="card-body">
-                            <?php if(empty($recent_permintaan)): ?>
-                                <div class="text-center py-4">
-                                    <i class="bi bi-inbox text-muted" style="font-size: 3em;"></i>
-                                    <p class="text-muted mt-3">Belum ada permintaan</p>
-                                </div>
-                            <?php else: ?>
-                                <?php foreach($recent_permintaan as $item): ?>
-                                <div class="recent-item">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <h6 class="mb-1">
-                                                <i class="bi bi-person-circle text-primary"></i>
-                                                <?php echo htmlspecialchars($item['pasien_nama'] ?? 'Pasien'); ?>
-                                            </h6>
-                                            <p class="mb-1 small text-muted">
-                                                Ke: <?php echo $item['ke_rs'] ?? 'RS'; ?>
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <?php 
-                                            $status = $item['status'] ?? 'pending';
-                                            $status_class = 'bg-warning text-dark';
-                                            if($status == 'diterima') $status_class = 'bg-success';
-                                            if($status == 'ditolak') $status_class = 'bg-danger';
-                                            ?>
-                                            <span class="badge <?php echo $status_class; ?> status-badge">
-                                                <?php echo strtoupper($status); ?>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <p class="mb-0 small text-muted">
-                                        <i class="bi bi-calendar"></i>
-                                        <?php echo date('d M Y', strtotime($item['tanggal_permintaan'] ?? 'now')); ?>
-                                    </p>
-                                </div>
-                                <?php endforeach; ?>
-                                <div class="text-center mt-3">
-                                    <a href="pages/berkas.php" class="btn btn-outline-primary btn-sm">
-                                        Lihat Semua <i class="bi bi-arrow-right"></i>
-                                    </a>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
+            <div class="stat-card stat-rejected">
+                <div class="stat-icon-wrapper">
+                    <i class="bi bi-x-circle-fill"></i>
                 </div>
-                
-                 <!-- Kolom Kanan: Aktivitas -->
-            <div class="col-md-4">
-                <div class="card mb-3">
-                    <div class="card-header bg-primary text-white">
-                        <i class="bi bi-activity"></i> Aktivitas Terakhir
-                    </div>
-                    <div class="card-body p-0">
-                        <?php if(empty($aktifitas_terakhir)): ?>
-                            <div class="p-3 text-center">
-                                <i class="bi bi-inbox text-muted"></i>
-                                <p class="text-muted mt-2 small">Belum ada aktivitas</p>
-                            </div>
-                        <?php else: ?>
-                            <div style="max-height: 250px; overflow-y: auto;">
-                                <?php foreach($aktifitas_terakhir as $aktifitas): 
-                                    $waktu = strtotime($aktifitas['tanggal']);
-                                    $display_time = date('H:i', $waktu);
-                                ?>
-                                <div class="activity-item">
-                                    <div class="d-flex">
-                                        <div class="me-2">
-                                            <i class="bi bi-check-circle text-success"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <small class="d-block"><?php echo htmlspecialchars($aktifitas['aksi']); ?></small>
-                                            <small class="text-muted d-block"><?php echo htmlspecialchars(substr($aktifitas['keterangan'], 0, 30)); ?>...</small>
-                                            <small class="text-muted"><i class="bi bi-clock"></i> <?php echo $display_time; ?></small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
+                <div class="stat-number"><?php echo $ditolak_count; ?></div>
+                <div class="stat-label">Ditolak</div>
+                <div class="stat-trend"><i class="bi bi-x"></i> Tidak disetujui</div>
             </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="section-header">
+            <div class="section-icon">
+                <i class="bi bi-lightning-charge-fill"></i>
+            </div>
+            <h2 class="section-title">Akses Cepat</h2>
+        </div>
+        
+        <div class="quick-actions-grid">
+            <a href="pages/ajukan.php" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="bi bi-send-plus-fill"></i>
+                </div>
+                <div class="quick-action-title">Ajukan Permintaan</div>
+                <p class="quick-action-desc">Minta data rekam medis dari RS lain</p>
+            </a>
             
-            <!-- Footer -->
-            <div class="mt-4 pt-3 border-top">
-                <div class="row">
-                    <div class="col-md-6">
-                        <small class="text-muted">
-                            <i class="bi bi-cpu"></i> Sistem Rekam Medis Elektronik
-                        </small>
-                    </div>
-                    <div class="col-md-6 text-end">
-                        <small class="text-muted">
-                            <i class="bi bi-calendar"></i> <?php echo date('d F Y'); ?>
-                        </small>
-                    </div>
+            <a href="pages/terima.php" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="bi bi-inbox-fill"></i>
                 </div>
+                <div class="quick-action-title">Permintaan Masuk</div>
+                <p class="quick-action-desc"><?php echo $jumlah_masuk; ?> permintaan menunggu</p>
+            </a>
+            
+            <a href="pages/berkas.php" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="bi bi-folder-check"></i>
+                </div>
+                <div class="quick-action-title">Berkas Diterima</div>
+                <p class="quick-action-desc">Lihat arsip data yang diterima</p>
+            </a>
+            
+            <a href="pages/histori.php" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="quick-action-title">Histori Aktivitas</div>
+                <p class="quick-action-desc">Riwayat semua transaksi</p>
+            </a>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div class="section-header">
+            <div class="section-icon">
+                <i class="bi bi-activity"></i>
             </div>
+            <h2 class="section-title">Aktivitas Terbaru</h2>
+        </div>
+        
+        <div class="activity-card">
+            <?php if(empty($recent_permintaan)): ?>
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <p>Belum ada aktivitas permintaan</p>
+                </div>
+            <?php else: ?>
+                <?php foreach($recent_permintaan as $req): 
+                    $status = $req['status'] ?? 'pending';
+                    $badge_class = $status == 'diterima' ? 'badge-accepted' : ($status == 'ditolak' ? 'badge-rejected' : 'badge-pending');
+                    $icon_class = $status == 'diterima' ? 'icon-inbox' : 'icon-send';
+                ?>
+                <div class="activity-item">
+                    <div class="activity-icon <?php echo $icon_class; ?>">
+                        <i class="bi bi-<?php echo $status == 'diterima' ? 'check-circle' : 'send'; ?>"></i>
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title"><?php echo htmlspecialchars($req['pasien_nama']); ?></div>
+                        <div class="activity-meta">
+                            <i class="bi bi-hospital"></i> <?php echo htmlspecialchars($req['ke_rs']); ?> • 
+                            <i class="bi bi-calendar"></i> <?php echo date('d M Y', strtotime($req['tanggal_permintaan'])); ?>
+                        </div>
+                    </div>
+                    <span class="activity-badge <?php echo $badge_class; ?>">
+                        <?php echo strtoupper($status); ?>
+                    </span>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-    // Simple animations
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add subtle animation to stat cards
-        const statCards = document.querySelectorAll('.stat-card');
-        statCards.forEach((card, index) => {
-            card.style.animationDelay = (index * 0.1) + 's';
-            card.classList.add('animate__animated', 'animate__fadeInUp');
-        });
-    });
-    </script>
 </body>
 </html>

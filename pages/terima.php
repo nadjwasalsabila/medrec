@@ -1,5 +1,9 @@
 <?php
 session_start();
+
+// Set timezone Indonesia (WIB)
+date_default_timezone_set('Asia/Jakarta');
+
 if(!isset($_SESSION['rs_kode'])){
     header('Location: ../login.php');
     exit;
@@ -28,6 +32,59 @@ usort($histori_kirim, function($a, $b) {
     $date_b = $b['tanggal_diterima'] ?? $b['tanggal_permintaan'];
     return strtotime($date_b) - strtotime($date_a);
 });
+
+
+// Proses tolak permintaan
+if(isset($_POST['tolak_permintaan'])){
+    $permintaan_id = $_POST['permintaan_id'] ?? '';
+    $alasan_penolakan = $_POST['alasan_penolakan'] ?? 'Tidak ada alasan yang diberikan';
+    $dari_rs = $_POST['dari_rs'] ?? '';
+    $pasien_nama = $_POST['pasien_nama'] ?? '';
+    
+    // Cari data permintaan
+    $permintaan_data = null;
+    foreach($permintaan_masuk as $pm) {
+        if($pm['id'] == $permintaan_id) {
+            $permintaan_data = $pm;
+            break;
+        }
+    }
+    
+    if(!$permintaan_data) {
+        $error = "❌ Permintaan tidak ditemukan";
+    } else {
+        // Update status menjadi 'ditolak'
+        $update_data = [
+            'status' => 'ditolak',
+            'keterangan' => $alasan_penolakan
+        ];
+        
+        $result = updateData('permintaan', $permintaan_id, $update_data);
+        
+        if($result['success']){
+            // Simpan histori
+            createData('histori', [
+                'permintaan_id' => $permintaan_id,
+                'rs_id' => $rs_kode,
+                'aksi' => 'menolak_permintaan',
+                'keterangan' => 'Menolak permintaan data pasien ' . $pasien_nama . 
+                               ' dari RS ' . $dari_rs . '. Alasan: ' . $alasan_penolakan,
+                'waktu' => date('Y-m-d H:i:s')
+            ]);
+            
+            $success = "✅ Permintaan dari RS " . $dari_rs . " berhasil ditolak!";
+            $success .= "<br><small>Alasan: " . htmlspecialchars($alasan_penolakan) . "</small>";
+            
+            // Refresh data
+            $permintaan_masuk = getData('permintaan', "ke_rs = '$rs_kode' AND status = 'pending'");
+            usort($permintaan_masuk, function($a, $b) {
+                return strtotime($b['tanggal_permintaan']) - strtotime($a['tanggal_permintaan']);
+            });
+        } else {
+            $error = "❌ Gagal menolak permintaan";
+        }
+    }
+}
 
 // Proses kirim data
 if(isset($_POST['kirim_data'])){
@@ -147,63 +204,82 @@ if(isset($_POST['kirim_data'])){
     <title>Permintaan Masuk - <?php echo htmlspecialchars($rs_nama); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/modern-theme.css">
     <style>
-        .topbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: linear-gradient(180deg, #2c3e50, #1a2530);
-            z-index: 1100;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-        }
         .main-content {
             margin-top: 60px;
-            margin-left: 250px;
-            padding: 20px;
-            transition: margin-left 0.3s;
-            min-height: 100vh;
-            background: #f8f9fa;
+            margin-left: 0;
+            padding: 32px;
+            min-height: calc(100vh - 60px);
         }
         
         @media (max-width: 768px) {
             .main-content {
-                margin-left: 0 !important;
-                padding-left: 15px;
-                padding-right: 15px;
+                padding: 20px;
             }
         }
         
         .request-card {
             background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border: 1px solid #dee2e6;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--gray-200);
             transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .request-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--gray-300);
         }
         
         .request-card:hover {
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            border-color: #0d6efd;
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
         }
         
-        .urgensi-badge {
-            font-size: 0.8em;
-            padding: 4px 10px;
-            border-radius: 15px;
+        .request-card.urgent::before {
+            background: var(--danger);
+        }
+        
+        .request-card.urgent {
+            background: #fff5f5;
+        }
+        
+        .request-card.biasa::before {
+            background: var(--warning);
+        }
+        
+        .histori-item {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s;
+        }
+        
+        .histori-item:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-sm);
+            border-color: var(--primary-blue);
         }
         
         .patient-name {
-            color: #0d6efd;
+            color: var(--primary-blue);
             font-weight: 600;
         }
         
         .btn-send {
-            background: #198754;
+            background: var(--success);
             color: white;
             border: none;
             padding: 8px 20px;
@@ -289,155 +365,153 @@ if(isset($_POST['kirim_data'])){
     </style>
 </head>
 <body>
-    <div class="topbar">
-        <button id="sidebarToggle" class="btn btn-secondary">
-            <i class="bi bi-list"></i>
-        </button>
-        <div class="ms-auto badge bg-light text-dark">
-            <i class="bi bi-shield-check"></i> Mode Enkripsi Aktif
-        </div>
-    </div>
+    <?php include '../components/topbar.php'; ?>
     
     <?php include '../components/sidebar.php'; ?>
     
     <div class="main-content">
         <div class="container">
             <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-5">
                 <div>
-                    <h3><i class="bi bi-inbox text-primary"></i> Permintaan Masuk</h3>
-                    <p class="text-muted">RS: <strong><?php echo htmlspecialchars($rs_kode); ?> - <?php echo htmlspecialchars($rs_nama); ?></strong></p>
+                    <h2 class="fw-bold text-dark"><i class="bi bi-inbox text-primary me-2"></i>Permintaan Masuk</h2>
+                    <p class="text-muted">Kelola permintaan data medis dari Rumah Sakit lain</p>
                 </div>
                 <div>
-                    <a href="ajukan.php" class="btn btn-outline-primary">
+                    <a href="ajukan.php" class="btn-modern btn-primary-modern">
                         <i class="bi bi-send"></i> Ajukan Permintaan
-                    </a>
-                    <a href="berkas.php" class="btn btn-outline-success ms-2">
-                        <i class="bi bi-archive"></i> Arsip Permintaan
                     </a>
                 </div>
             </div>
             
             <!-- Informasi Enkripsi -->
-            <div class="encryption-info">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-shield-lock me-3" style="font-size: 2em;"></i>
-                    <div>
-                        <h5 class="mb-1">Sistem Enkripsi End-to-End</h5>
-                        <p class="mb-0 small">Data yang Anda kirim akan dienkripsi dengan kunci RS peminta. Hanya RS tersebut yang dapat membuka data.</p>
-                    </div>
+            <div class="alert-modern alert-primary mb-4">
+                <i class="bi bi-shield-lock" style="font-size: 1.5rem;"></i>
+                <div class="flex-grow-1">
+                    <strong>Sistem Enkripsi End-to-End</strong><br>
+                    Data yang Anda kirim akan dienkripsi dengan kunci RS peminta. Hanya RS tersebut yang dapat membuka data.
                 </div>
             </div>
             
             <!-- Alerts -->
             <?php if(!empty($success)): ?>
-            <div class="alert alert-success alert-dismissible fade show">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-check-circle-fill me-2" style="font-size: 1.5em;"></i>
-                    <div>
-                        <?php echo $success; ?>
-                    </div>
+            <div class="alert-modern alert-success mb-4">
+                <i class="bi bi-check-circle-fill" style="font-size: 1.5rem;"></i>
+                <div class="flex-grow-1">
+                    <strong>Sukses</strong><br>
+                    <?php echo $success; ?>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <?php endif; ?>
             
             <?php if(!empty($error)): ?>
-            <div class="alert alert-danger alert-dismissible fade show">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5em;"></i>
-                    <div>
-                        <?php echo $error; ?>
-                    </div>
+            <div class="alert-modern alert-danger mb-4">
+                <i class="bi bi-exclamation-triangle-fill" style="font-size: 1.5rem;"></i>
+                <div class="flex-grow-1">
+                    <strong>Error</strong><br>
+                    <?php echo $error; ?>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <?php endif; ?>
             
             <!-- Daftar Permintaan Masuk -->
-            <div class="card">
-                <div class="card-header bg-warning text-dark">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="mb-0"><i class="bi bi-clock"></i> Permintaan Menunggu</h5>
-                            <small class="text-muted">Ada <?php echo count($permintaan_masuk); ?> permintaan yang perlu ditanggapi</small>
-                        </div>
-                        <?php if(count($permintaan_masuk) > 0): ?>
-                        <span class="badge bg-danger">
-                            <i class="bi bi-exclamation-circle"></i> <?php echo count($permintaan_masuk); ?> Pending
-                        </span>
-                        <?php endif; ?>
+            <div class="content-card shadow-sm p-4 mb-5">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-warning me-2"></i>Permintaan Menunggu</h5>
+                        <small class="text-muted">Perlu respons segera</small>
                     </div>
+                    <?php if(count($permintaan_masuk) > 0): ?>
+                    <span class="badge bg-danger rounded-pill px-3 py-2">
+                        <i class="bi bi-exclamation-circle me-1"></i> <?php echo count($permintaan_masuk); ?> Pending
+                    </span>
+                    <?php else: ?>
+                    <span class="badge bg-success rounded-pill px-3 py-2">
+                        <i class="bi bi-check-circle me-1"></i> Semua Selesai
+                    </span>
+                    <?php endif; ?>
                 </div>
-                <div class="card-body">
+
+                <div class="card-body p-0">
                     <?php if(empty($permintaan_masuk)): ?>
-                        <div class="empty-state">
-                            <i class="bi bi-check-circle"></i>
-                            <h5 class="mt-3">Tidak ada permintaan yang menunggu</h5>
-                            <p class="text-muted">Semua permintaan telah ditanggapi</p>
+                        <div class="text-center py-5">
+                            <div class="bg-light rounded-circle d-inline-flex p-4 mb-3">
+                                <i class="bi bi-check-lg text-success" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="text-dark">Tidak ada permintaan menunggu</h5>
+                            <p class="text-muted">Kerja bagus! Semua permintaan telah Anda proses.</p>
                         </div>
                     <?php else: ?>
                         <?php foreach($permintaan_masuk as $pm): ?>
-                        <div class="request-card">
+                        <div class="request-card mb-4 position-relative overflow-hidden">
                             <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <div class="d-flex align-items-start">
-                                        <div class="me-3">
-                                            <div class="bg-primary text-white rounded-circle p-2" style="width: 40px; height: 40px; text-align: center;">
+                                <div class="col-lg-8">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; font-size: 1.5rem;">
                                                 <i class="bi bi-person-fill"></i>
                                             </div>
                                         </div>
                                         <div>
-                                            <h5 class="patient-name mb-1">
+                                            <h5 class="fw-bold text-dark mb-1">
                                                 <?php echo htmlspecialchars($pm['pasien_nama']); ?>
                                             </h5>
-                                            <p class="mb-1 text-muted small">
-                                                <i class="bi bi-card-text"></i> NIK: <?php echo htmlspecialchars($pm['pasien_nik']); ?>
-                                                <span class="mx-2">•</span>
-                                                <i class="bi bi-hospital"></i> Dari RS: <?php echo htmlspecialchars($pm['dari_rs']); ?>
-                                            </p>
-                                            <p class="mb-2 small">
-                                                <i class="bi bi-calendar"></i> 
-                                                Diminta: <?php echo date('d M Y H:i', strtotime($pm['tanggal_permintaan'])); ?>
-                                            </p>
-                                            <p class="mb-0 small text-muted">
-                                                <i class="bi bi-chat-left-text"></i> 
-                                                <?php echo htmlspecialchars($pm['keterangan']); ?>
-                                            </p>
+                                            <div class="d-flex gap-3 text-muted small mb-2">
+                                                <span><i class="bi bi-card-text me-1"></i> <?php echo htmlspecialchars($pm['pasien_nik']); ?></span>
+                                                <span class="text-primary fw-medium"><i class="bi bi-hospital me-1"></i> <?php echo htmlspecialchars($pm['dari_rs']); ?></span>
+                                                <span><i class="bi bi-calendar me-1"></i> <?php echo date('d M Y H:i', strtotime($pm['tanggal_permintaan'])); ?></span>
+                                            </div>
+                                            <div class="p-3 bg-light rounded-3 mt-2 border border-light">
+                                                <i class="bi bi-chat-left-text text-secondary me-2"></i> 
+                                                <span class="fst-italic text-dark">"<?php echo htmlspecialchars($pm['keterangan']); ?>"</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <div class="col-md-4 text-end">
-                                    <?php if(($pm['urgensi'] ?? '') == 'urgent'): ?>
-                                        <span class="badge bg-danger urgensi-badge mb-2">
-                                            <i class="bi bi-exclamation-triangle"></i> URGENT
-                                        </span>
-                                    <?php elseif(($pm['urgensi'] ?? '') == 'biasa'): ?>
-                                        <span class="badge bg-warning urgensi-badge mb-2">
-                                            <i class="bi bi-clock"></i> BIASA
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="badge bg-info urgensi-badge mb-2">
-                                            <i class="bi bi-calendar"></i> TIDAK URGENT
-                                        </span>
-                                    <?php endif; ?>
-                                    
-                                    <br>
-                                    
-                                    <!-- Tombol Kirim Data -->
-                                    <button type="button" class="btn-send mt-2" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#kirimModal"
-                                            data-id="<?php echo $pm['id']; ?>"
-                                            data-nama="<?php echo htmlspecialchars($pm['pasien_nama']); ?>"
-                                            data-nik="<?php echo htmlspecialchars($pm['pasien_nik']); ?>"
-                                            data-dari-rs="<?php echo htmlspecialchars($pm['dari_rs']); ?>">
-                                        <i class="bi bi-send-check"></i> Kirim Data
-                                    </button>
-                                    
-                                    <div class="mt-2 small text-muted">
-                                        <i class="bi bi-key"></i> Enkripsi dengan kunci RS <?php echo htmlspecialchars($pm['dari_rs']); ?>
+                                <div class="col-lg-4 text-end mt-3 mt-lg-0">
+                                    <div class="d-flex flex-column align-items-end gap-2">
+                                        <?php if(($pm['urgensi'] ?? '') == 'urgent'): ?>
+                                            <span class="badge rounded-pill bg-danger px-3 py-2 shadow-sm mb-2">
+                                                <i class="bi bi-exclamation-triangle-fill me-1"></i> URGENT
+                                            </span>
+                                        <?php elseif(($pm['urgensi'] ?? '') == 'biasa'): ?>
+                                            <span class="badge rounded-pill bg-warning text-dark px-3 py-2 shadow-sm mb-2">
+                                                <i class="bi bi-clock me-1"></i> BIASA
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge rounded-pill bg-info px-3 py-2 shadow-sm mb-2">
+                                                <i class="bi bi-calendar me-1"></i> TIDAK URGENT
+                                            </span>
+                                        <?php endif; ?>
+                                        
+                                        <!-- Tombol Aksi -->
+                                        <div class="d-flex gap-2 w-100 justify-content-end">
+                                            <button type="button" class="btn-modern btn-danger-modern flex-fill" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#tolakModal"
+                                                    data-id="<?php echo $pm['id']; ?>"
+                                                    data-nama="<?php echo htmlspecialchars($pm['pasien_nama']); ?>"
+                                                    data-dari-rs="<?php echo htmlspecialchars($pm['dari_rs']); ?>">
+                                                <i class="bi bi-x-circle"></i> Tolak
+                                            </button>
+                                            
+                                            <button type="button" class="btn-modern btn-success-modern flex-fill" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#kirimModal"
+                                                    data-id="<?php echo $pm['id']; ?>"
+                                                    data-nama="<?php echo htmlspecialchars($pm['pasien_nama']); ?>"
+                                                    data-nik="<?php echo htmlspecialchars($pm['pasien_nik']); ?>"
+                                                    data-dari-rs="<?php echo htmlspecialchars($pm['dari_rs']); ?>">
+                                                <i class="bi bi-send-check"></i> Kirim Data
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="mt-2 small text-muted fst-italic">
+                                            <i class="bi bi-key-fill text-warning"></i> Enkripsi kunci RS <?php echo htmlspecialchars($pm['dari_rs']); ?>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -448,67 +522,66 @@ if(isset($_POST['kirim_data'])){
             </div>
             
             <!-- Histori Pengiriman -->
-            <div class="histori-card mt-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="content-card mt-5 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h5><i class="bi bi-check2-all text-success"></i> Data yang Telah Dikirim</h5>
-                        <p class="text-muted small">Riwayat data yang telah Anda kirimkan</p>
+                        <h4 class="fw-bold mb-1"><i class="bi bi-check2-all text-success me-2"></i>Data Telah Dikirim</h4>
+                        <p class="text-muted mb-0">Riwayat data medis yang telah berhasil dikirim</p>
                     </div>
-                    <span class="badge bg-success">
-                        <i class="bi bi-check-circle"></i> <?php echo count($histori_kirim); ?> data
+                    <span class="badge bg-success rounded-pill px-3 py-2">
+                        <i class="bi bi-check-circle me-1"></i> <?php echo count($histori_kirim); ?> terkirim
                     </span>
                 </div>
                 
                 <?php if(empty($histori_kirim)): ?>
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Belum ada data yang dikirim.
+                    <div class="alert-modern alert-info text-center">
+                        <i class="bi bi-info-circle" style="font-size: 1.5rem;"></i>
+                        <div class="flex-grow-1">
+                            Belum ada riwayat pengiriman data.
+                        </div>
                     </div>
                 <?php else: ?>
+                    <div class="histori-list">
                     <?php foreach($histori_kirim as $hk): 
                         $today = date('Y-m-d');
                         $expired = $hk['tanggal_expired'] ?? '';
                         $is_expired = $expired && $expired < $today;
                     ?>
-                    <div class="histori-item <?php echo $is_expired ? 'expired-item' : ''; ?>">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">
-                                    <i class="bi bi-person-circle"></i>
-                                    <?php echo htmlspecialchars($hk['pasien_nama']); ?>
-                                </h6>
-                                <p class="mb-1 small text-muted">
-                                    <i class="bi bi-hospital"></i> Ke RS: <?php echo htmlspecialchars($hk['dari_rs']); ?>
-                                    <span class="mx-2">•</span>
-                                    <i class="bi bi-calendar"></i> 
-                                    <?php echo date('d M Y H:i', strtotime($hk['tanggal_diterima'] ?? $hk['tanggal_permintaan'])); ?>
-                                </p>
-                                <div class="small">
-                                    <i class="bi bi-key text-info"></i>
-                                    <span class="text-muted">Dienkripsi untuk RS <?php echo htmlspecialchars($hk['dari_rs']); ?></span>
-                                </div>
+                    <div class="histori-item p-3 mb-3 border rounded-3 bg-white shadow-sm d-flex align-items-center gap-3">
+                        <div class="bg-success bg-opacity-10 text-success rounded-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                            <i class="bi bi-file-earmark-check"></i>
+                        </div>
+                        
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold mb-1"><?php echo htmlspecialchars($hk['pasien_nama']); ?></h6>
+                            <div class="d-flex gap-3 text-muted small">
+                                <span><i class="bi bi-hospital me-1"></i> Ke: <?php echo htmlspecialchars($hk['dari_rs']); ?></span>
+                                <span><i class="bi bi-calendar me-1"></i> <?php echo date('d M Y H:i', strtotime($hk['tanggal_diterima'] ?? $hk['tanggal_permintaan'])); ?></span>
                             </div>
-                            <div class="text-end">
-                                <?php if($is_expired): ?>
-                                    <span class="badge bg-dark">
-                                        <i class="bi bi-hourglass-bottom"></i> Expired
-                                    </span>
+                        </div>
+                        
+                        <div class="text-end">
+                            <?php if($is_expired): ?>
+                                <span class="badge-modern badge-secondary">
+                                    <i class="bi bi-hourglass-bottom"></i> EXPIRED
+                                </span>
+                            <?php else: ?>
+                                <?php 
+                                $days_left = round((strtotime($expired) - strtotime($today)) / (60 * 60 * 24));
+                                ?>
+                                <span class="badge-modern badge-success">
+                                    <i class="bi bi-check-circle"></i> AKTIF
+                                </span>
+                                <?php if($days_left <= 3): ?>
+                                    <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> <?php echo $days_left; ?> hari lagi</div>
                                 <?php else: ?>
-                                    <?php 
-                                    $days_left = round((strtotime($expired) - strtotime($today)) / (60 * 60 * 24));
-                                    ?>
-                                    <span class="badge bg-success">Aktif</span>
-                                    <br>
-                                    <small class="text-muted">
-                                        <?php echo $days_left; ?> hari lagi
-                                        <?php if($days_left <= 3): ?>
-                                            <br><small class="text-danger"><i class="bi bi-exclamation-triangle"></i> Segera expired</small>
-                                        <?php endif; ?>
-                                    </small>
+                                    <div class="text-muted small mt-1"><?php echo $days_left; ?> hari lagi</div>
                                 <?php endif; ?>
-                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </div>
             
@@ -675,6 +748,183 @@ if(isset($_POST['kirim_data'])){
         </div>
     </div>
     
+    <!-- Modal untuk Kirim Data -->
+    <div class="modal fade" id="kirimModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header bg-primary text-white p-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-send-check me-2"></i>Kirim Data Pasien
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                
+                <form method="POST" action="" enctype="multipart/form-data" id="kirimForm">
+                    <div class="modal-body p-4">
+                        <!-- Info Pasien -->
+                        <div class="alert-modern alert-primary mb-4 p-3 border-start border-4 border-primary bg-primary bg-opacity-10">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="bi bi-person-circle fs-3 text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-1" id="modalPasienNama">-</h6>
+                                    <p class="mb-0 small text-muted" id="modalPasienInfo">-</p>
+                                </div>
+                            </div>
+                            <input type="hidden" name="permintaan_id" id="modalPermintaanId">
+                            <input type="hidden" name="pasien_nik" id="modalPasienNik">
+                            <input type="hidden" name="dari_rs" id="modalDariRs">
+                        </div>
+                        
+                        <!-- Info Enkripsi -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-shield-lock-fill text-warning me-2"></i>
+                                <span class="fw-bold text-dark">Enkripsi End-to-End</span>
+                            </div>
+                            <p class="small text-muted mb-0" id="encryptionInfo">Data akan dienkripsi.</p>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Upload Dokumen (Opsional)</label>
+                                <div class="file-upload-area border-2 border-dashed rounded-3 p-4 text-center cursor-pointer transition-all hover:bg-light" style="border-color: #cbd5e1;" onclick="document.getElementById('fileInput').click()">
+                                    <i class="bi bi-cloud-arrow-up text-primary" style="font-size: 2.5em;"></i>
+                                    <p class="mb-1 mt-2 fw-medium">Klik untuk upload file</p>
+                                    <small class="text-muted d-block">PDF, DOCX, JPG, PNG (Max 10MB)</small>
+                                    <input type="file" name="data_file" id="fileInput" class="d-none" onchange="previewFile()">
+                                </div>
+                                <div id="filePreview" class="file-preview mt-2 p-2 border rounded bg-light" style="display: none;">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center text-truncate">
+                                            <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                                            <div>
+                                                <div id="fileName" class="fw-medium text-truncate" style="max-width: 150px;">Filename</div>
+                                                <div id="fileSize" class="small text-muted">0 KB</div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="clearFile()"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <div class="mb-3">
+                                    <label class="form-label fw-medium">Catatan / Riwayat Medis</label>
+                                    <textarea name="text_data" class="form-control-modern" rows="4" style="height: 120px;"
+                                              placeholder="Tuliskan catatan medis atau tempel teks hasil lab..."></textarea>
+                                </div>
+                                <div class="mb-0">
+                                    <label class="form-label fw-medium">Keterangan Tambahan</label>
+                                    <input type="text" name="keterangan_tambahan" class="form-control-modern" 
+                                           placeholder="Info file atau lampiran...">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Expired Options -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>Masa Berlaku Akses</label>
+                            <div class="d-flex gap-3 flex-wrap">
+                                <div class="flex-fill">
+                                    <input type="radio" class="btn-check" name="expired_days" id="exp7" value="7" checked>
+                                    <label class="btn btn-outline-primary w-100 p-2" for="exp7">
+                                        <span class="d-block fw-bold">7 Hari</span>
+                                        <span class="small">Standard</span>
+                                    </label>
+                                </div>
+                                <div class="flex-fill">
+                                    <input type="radio" class="btn-check" name="expired_days" id="exp14" value="14">
+                                    <label class="btn btn-outline-primary w-100 p-2" for="exp14">
+                                        <span class="d-block fw-bold">14 Hari</span>
+                                        <span class="small">Extensive</span>
+                                    </label>
+                                </div>
+                                <div class="flex-fill">
+                                    <input type="radio" class="btn-check" name="expired_days" id="exp30" value="30">
+                                    <label class="btn btn-outline-primary w-100 p-2" for="exp30">
+                                        <span class="d-block fw-bold">30 Hari</span>
+                                        <span class="small">Long Term</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="form-check me-3">
+                                        <input class="form-check-input" type="radio" name="expired_days" id="expCustom" value="custom">
+                                        <label class="form-check-label" for="expCustom">Custom</label>
+                                    </div>
+                                    <div class="input-group" style="display: none; max-width: 200px;" id="customExpiredInput">
+                                        <input type="number" class="form-control form-control-sm" id="customDays" placeholder="Hari" min="1" max="365">
+                                        <span class="input-group-text bg-white">hari</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning d-flex align-items-center p-2 small m-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                            <div>Akses data akan otomatis dicabut setelah masa berlaku habis.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer bg-light p-3 border-top">
+                        <button type="button" class="btn-modern btn-secondary-modern" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" name="kirim_data" class="btn-modern btn-primary-modern px-4">
+                            <i class="bi bi-lock-fill me-1"></i> Enkripsi & Kirim
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal untuk Tolak Permintaan -->
+    <div class="modal fade" id="tolakModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg p-0" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header bg-danger text-white p-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-x-circle me-2"></i>Tolak Permintaan
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                
+                <form method="POST" action="" id="tolakForm">
+                    <div class="modal-body p-4">
+                        <div class="text-center mb-4">
+                            <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-inline-flex p-3 mb-2">
+                                <i class="bi bi-exclamation-lg fs-1"></i>
+                            </div>
+                            <h6 class="fw-bold">Konfirmasi Penolakan</h6>
+                            <p class="text-muted small mb-0" id="tolakPasienInfo"></p>
+                            <input type="hidden" name="permintaan_id" id="tolakPermintaanId">
+                            <input type="hidden" name="dari_rs" id="tolakDariRs">
+                            <input type="hidden" name="pasien_nama" id="tolakPasienNama">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Alasan Penolakan</label>
+                            <textarea name="alasan_penolakan" class="form-control-modern" rows="3" 
+                                      placeholder="Jelaskan alasan penolakan..."></textarea>
+                        </div>
+                        
+                        <p class="small text-danger text-center"><i class="bi bi-info-circle me-1"></i>Aksi ini tidak dapat dibatalkan.</p>
+                    </div>
+                    
+                    <div class="modal-footer bg-light p-3 border-top justify-content-center">
+                        <button type="button" class="btn-modern btn-secondary-modern me-2" data-bs-dismiss="modal">Kembali</button>
+                        <button type="submit" name="tolak_permintaan" class="btn-modern btn-danger-modern px-4">
+                            Tolak Permintaan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     // Inisialisasi modal
@@ -697,6 +947,28 @@ if(isset($_POST['kirim_data'])){
         // Reset form
         document.getElementById('kirimForm').reset();
         clearFile();
+    });
+    
+    // Inisialisasi modal tolak
+    const tolakModal = document.getElementById('tolakModal');
+    tolakModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const permintaanId = button.getAttribute('data-id');
+        const pasienNama = button.getAttribute('data-nama');
+        const dariRs = button.getAttribute('data-dari-rs');
+        
+        // Set data ke form
+        document.getElementById('tolakPermintaanId').value = permintaanId;
+        document.getElementById('tolakDariRs').value = dariRs;
+        document.getElementById('tolakPasienNama').value = pasienNama;
+        document.getElementById('tolakPasienInfo').innerHTML = '<strong>Pasien:</strong> ' + pasienNama + '<br><strong>Dari RS:</strong> ' + dariRs;
+        
+        // Reset form
+        document.getElementById('tolakForm').reset();
+        // Restore hidden fields after reset
+        document.getElementById('tolakPermintaanId').value = permintaanId;
+        document.getElementById('tolakDariRs').value = dariRs;
+        document.getElementById('tolakPasienNama').value = pasienNama;
     });
     
     // File preview
@@ -782,13 +1054,11 @@ if(isset($_POST['kirim_data'])){
             expiredDays = document.getElementById('customDays').value;
         }
         
-        const confirmMsg = `Konfirmasi Pengiriman Data Terenkripsi:\n\n` +
+        const confirmMsg = `Konfirmasi Pengiriman Data:\n` +
+                          `Ke: ${dariRs}\n` +
                           `Pasien: ${pasienNama}\n` +
-                          `RS Tujuan: ${dariRs}\n` +
-                          `Masa expired: ${expiredDays} hari\n\n` +
-                          `Data akan dienkripsi dengan kunci RS ${dariRs}.\n` +
-                          `Hanya RS ${dariRs} yang dapat membuka data ini.\n\n` +
-                          `Apakah Anda yakin?`;
+                          `Durasi Akses: ${expiredDays} hari\n\n` +
+                          `Lanjutkan proses enkripsi dan pengiriman?`;
         
         return confirm(confirmMsg);
     });

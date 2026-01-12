@@ -10,7 +10,7 @@ $kode_rs = $_POST['kode_rs'] ?? '';
 $password = $_POST['password'] ?? '';
 
 // Validasi login
-if (isset($rumah_sakit[$kode_rs]) && $rumah_sakit[$kode_rs]['password'] == $password) {
+if (isset($rumah_sakit[$kode_rs]) && (password_verify($password, $rumah_sakit[$kode_rs]['password']) || $rumah_sakit[$kode_rs]['password'] == $password)) {
     // Login berhasil
     $_SESSION['rs_kode'] = $kode_rs;
     $_SESSION['rs_nama'] = $rumah_sakit[$kode_rs]['nama'];

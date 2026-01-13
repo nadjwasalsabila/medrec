@@ -70,4 +70,5 @@ Proyek ini disusun oleh mahasiswa Teknik Informatika Universitas Dian Nuswantoro
   - Nadjwa Salsabila - @nadjwasalsabila
   - Timothy Giovanny - @Moty-G
   - Naia Syafina - @naiasyafina
+  - micaxsz - @micaxsz
 <p align="center"> Projek mata kuliah KRIPTOGRAFI </p>

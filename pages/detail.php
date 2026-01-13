@@ -190,10 +190,6 @@ if (!$decrypted_data) {
                                 </div>
                             </div>
                             <div class="col-6">
-                                <small class="text-muted d-block mb-1">Dikirim Oleh</small>
-                                <div class="fw-bold text-dark"><i class="bi bi-person-check me-1"></i> <?php echo htmlspecialchars($decrypted_data['dikirim_oleh'] ?? 'Admin RS'); ?></div>
-                            </div>
-                            <div class="col-6">
                                 <small class="text-muted d-block mb-1">Tanggal Diterima</small>
                                 <div class="fw-bold text-dark"><?php echo date('d M Y, H:i', strtotime($permintaan['tanggal_diterima'])); ?></div>
                             </div>
@@ -216,7 +212,7 @@ if (!$decrypted_data) {
                 <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
                 <div class="flex-grow-1">
                     <strong>Masa Berlaku Hampir Habis!</strong><br>
-                    Data ini akan kadaluarsa dan dihapus otomatis dalam <strong><?php echo $days_left; ?> hari</strong>. Segera unduh jika diperlukan.
+                    Data ini akan kadaluarsa dan dihapus otomatis dalam <strong><?php echo $days_left; ?> hari</strong>.
                 </div>
             </div>
             <?php endif; ?>

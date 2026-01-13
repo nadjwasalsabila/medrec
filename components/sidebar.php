@@ -36,8 +36,9 @@ if ($db_loaded && isset($_SESSION['rs_kode'])) {
         // Filter hanya yang belum dibuka (jika kolom is_read ada)
         $unread_count = 0;
         foreach($archive_data as $item) {
-            // Jika is_read tidak ada atau false, hitung sebagai unread
-            if(!isset($item['is_read']) || $item['is_read'] === false || $item['is_read'] === null) {
+            // Jika is_read tidak ada, false, null, 0, atau 'f' (PostgreSQL boolean), hitung sebagai unread
+            $is_read = $item['is_read'] ?? null;
+            if($is_read === null || $is_read === false || $is_read === 'f' || $is_read === 0 || $is_read === '0' || $is_read === '') {
                 $unread_count++;
             }
         }
@@ -64,6 +65,12 @@ if ($db_loaded && isset($_SESSION['rs_kode'])) {
             <a href="<?= $base_path ?>dashboard.php" id="dashboard-link" class="menu-item">
                 <i class="bi bi-grid-fill"></i>
                 <span>Dashboard</span>
+            </a>
+        </li>
+        <li>
+            <a href="<?= $base_path ?>pages/pasien.php" id="pasien-link" class="menu-item">
+                <i class="bi bi-people-fill"></i>
+                <span>Data Pasien</span>
             </a>
         </li>
         <li>

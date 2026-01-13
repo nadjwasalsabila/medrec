@@ -53,12 +53,12 @@ Ikuti langkah berikut untuk menjalankan di komputer lokal:
     - Cari file bernama medrec.sql di dalam folder database/ pada proyek ini, lalu Import ke database yang baru dibuat.
 
 3. Konfigurasi Koneksi (Point 3)
-    Buka file koneksi database (biasanya bernama config.php, koneksi.php, atau di folder config/).
-    Sesuaikan pengaturannya dengan server lokal Anda:
-     $host = "localhost";
-     $user = "root";
-     $pass = "";
-     $db   = "db_medrec";
+    - Buka file koneksi database (biasanya bernama config.php, koneksi.php, atau di folder config/).
+      Sesuaikan pengaturannya dengan server lokal Anda:
+       $host = "localhost";
+       $user = "root";
+       $pass = "";
+       $db   = "db_medrec";
 
 4. Menjalankan Aplikasi (Point 4)
     - Pastikan folder proyek berada di dalam direktori htdocs (XAMPP) atau www (Laragon).

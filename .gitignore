@@ -1,1 +1,4 @@
-pocketbase/pb_data/ 
+.env
+uploads/
+.vscode/
+.DS_Store

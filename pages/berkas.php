@@ -256,6 +256,19 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
             </div>
             <?php endif; ?>
             
+            <!-- Search Box -->
+            <div class="mb-4">
+                <div class="position-relative">
+                    <input type="text" 
+                           id="searchPatient" 
+                           class="form-control form-control-lg ps-5" 
+                           placeholder="Cari nama pasien..." 
+                           style="border-radius: 12px; border: 2px solid var(--gray-200); transition: all 0.3s;">
+                    <i class="bi bi-search position-absolute text-muted" 
+                       style="left: 18px; top: 50%; transform: translateY(-50%); font-size: 1.2rem;"></i>
+                </div>
+            </div>
+            
             <!-- Info Panel -->
             <div class="row mb-5">
                 <div class="col-md-3">
@@ -647,6 +660,69 @@ if(isset($_GET['delete']) && isset($_GET['id'])) {
         modal.show();
         return false; // Prevent default link behavior
     }
+    
+    // Fungsi pencarian pasien
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchPatient');
+        
+        if (searchInput) {
+            // Add focus effect
+            searchInput.addEventListener('focus', function() {
+                this.style.borderColor = '#0d6efd';
+                this.style.boxShadow = '0 0 0 0.25rem rgba(13, 110, 253, 0.25)';
+            });
+            
+            searchInput.addEventListener('blur', function() {
+                this.style.borderColor = 'var(--gray-200)';
+                this.style.boxShadow = 'none';
+            });
+            
+            // Search functionality
+            searchInput.addEventListener('keyup', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                const patientCards = document.querySelectorAll('.request-card');
+                let visibleCount = 0;
+                
+                patientCards.forEach(card => {
+                    const cardParent = card.closest('.col-lg-6');
+                    const patientNameElement = card.querySelector('h5.fw-bold.text-dark');
+                    
+                    if (patientNameElement) {
+                        const patientName = patientNameElement.textContent.toLowerCase().trim();
+                        
+                        if (patientName.includes(searchTerm)) {
+                            cardParent.style.display = '';
+                            visibleCount++;
+                        } else {
+                            cardParent.style.display = 'none';
+                        }
+                    }
+                });
+                
+                // Show message if no results found
+                const existingNoResult = document.getElementById('noResultsMessage');
+                if (existingNoResult) {
+                    existingNoResult.remove();
+                }
+                
+                if (visibleCount === 0 && searchTerm !== '' && patientCards.length > 0) {
+                    const noResultsDiv = document.createElement('div');
+                    noResultsDiv.id = 'noResultsMessage';
+                    noResultsDiv.className = 'col-12';
+                    noResultsDiv.innerHTML = `
+                        <div class="text-center py-5 content-card">
+                            <div class="bg-light rounded-circle d-inline-flex p-4 mb-3">
+                                <i class="bi bi-search text-secondary" style="font-size: 3rem;"></i>
+                            </div>
+                            <h4 class="text-dark">Tidak ada hasil ditemukan</h4>
+                            <p class="text-muted mb-0">Tidak ada pasien dengan nama "${searchInput.value}"</p>
+                        </div>
+                    `;
+                    document.querySelector('.row').appendChild(noResultsDiv);
+                }
+            });
+        }
+    });
     </script>
 </body>
 </html>

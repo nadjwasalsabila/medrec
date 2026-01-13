@@ -55,10 +55,10 @@ Ikuti langkah berikut untuk menjalankan di komputer lokal:
 3. Konfigurasi Koneksi (Point 3)
     - Buka file koneksi database (biasanya bernama config.php, koneksi.php, atau di folder config/).
       Sesuaikan pengaturannya dengan server lokal Anda:
-       $host = "localhost";
-       $user = "root";
-       $pass = "";
-       $db   = "db_medrec";
+       - $host = "localhost";
+       - $user = "root";
+       - $pass = "";
+       - $db   = "db_medrec";
 
 4. Menjalankan Aplikasi (Point 4)
     - Pastikan folder proyek berada di dalam direktori htdocs (XAMPP) atau www (Laragon).

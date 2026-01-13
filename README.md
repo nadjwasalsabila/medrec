@@ -41,7 +41,8 @@
 ### 1. Clone Repositori
 Langkah pertama, unduh proyek ini ke komputer Anda:
 ```bash
-git clone [https://github.com/nadjwasalsabila/medrec.git](https://github.com/nadjwasalsabila/medrec.git) cd medrec
+git clone [https://github.com/nadjwasalsabila/medrec.git](https://github.com/nadjwasalsabila/medrec.git)
+cd medrec
 ```
 2. Setup Database Supabase
     - Buat akun dan proyek baru di Supabase.com.

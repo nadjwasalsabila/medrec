@@ -5,69 +5,76 @@
 <h1 align="center">🏥 MedRec (Medical Record System)</h1>
 
 <p align="center">
-  <strong>Sistem Manajemen Rekam Medis Berbasis Web untuk Efisiensi Pelayanan Kesehatan.</strong>
+  <strong>Sistem Manajemen Rekam Medis Modern dengan Integrasi Supabase.</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Project-MedRec-blue?style=for-the-badge" alt="project">
-  <img src="https://img.shields.io/badge/Status-Development-orange?style=for-the-badge" alt="status">
+  <img src="https://img.shields.io/badge/Database-Supabase-green?style=for-the-badge&logo=supabase" alt="database">
   <img src="https://img.shields.io/badge/Academic-UDINUS-red?style=for-the-badge" alt="udinus">
 </p>
 
 ---
 
 ## 📋 Tentang Proyek
-**MedRec** adalah platform digital yang dirancang untuk mengelola data pasien dan riwayat medis secara aman dan terorganisir. Proyek ini bertujuan untuk menggantikan pencatatan manual menjadi sistem digital yang lebih cepat dan akurat.
+**MedRec** adalah platform digital untuk mengelola data pasien dan riwayat medis secara real-time. Dengan menggunakan **Supabase**, sistem ini memiliki performa database yang lebih cepat, aman, dan mudah dikelola tanpa perlu menjalankan server database lokal.
 
 ### ✨ Fitur Utama
-- 🔐 **Secure Login** – Akses masuk untuk Admin dan Tenaga Medis.
-- 📂 **Manajemen Pasien** – Kelola data identitas pasien (Tambah, Edit, Hapus).
-- 📑 **Rekam Medis** – Pencatatan diagnosis, resep obat, dan riwayat kunjungan.
-- 📊 **Dashboard** – Visualisasi data kunjungan pasien secara ringkas.
-- 🖨️ **Cetak Laporan** – Fitur untuk mencetak riwayat medis pasien.
+- 🔐 **Secure Auth** – Login menggunakan sistem autentikasi dari Supabase.
+- 📂 **Manajemen Pasien** – CRUD data pasien yang tersinkronisasi langsung ke Cloud.
+- 📑 **Rekam Medis** – Pencatatan riwayat penyakit dan diagnosis pasien.
+- 📊 **Real-time Updates** – Data yang diinput langsung terupdate secara instan.
+- 🖨️ **Cetak Laporan** – Fitur cetak ringkasan medis pasien.
 
 ---
 
 ## 🛠️ Tech Stack
-Teknologi yang digunakan dalam pengembangan sistem ini:
-
 | Komponen | Teknologi |
 | :--- | :--- |
 | **Language** | ![PHP](https://img.shields.io/badge/php-%23777BB4.svg?style=flat&logo=php&logoColor=white) |
-| **Database** | ![MySQL](https://img.shields.io/badge/mysql-%2300f.svg?style=flat&logo=mysql&logoColor=white) |
-| **Frontend** | ![Bootstrap](https://img.shields.io/badge/bootstrap-%23563D7C.svg?style=flat&logo=bootstrap&logoColor=white) ![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=flat&logo=javascript&logoColor=%23F7DF1E) |
+| **Database** | ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white) |
+| **Frontend** | ![Bootstrap](https://img.shields.io/badge/bootstrap-%23563D7C.svg?style=flat&logo=bootstrap&logoColor=white) |
 
 ---
 
-## 🚀 Cara Instalasi
-Ikuti langkah berikut untuk menjalankan di komputer lokal:
+## 🚀 Panduan Instalasi (Supabase Version)
 
-1. **Clone Repositori**
-   ```bash
-   git clone [https://github.com/nadjwasalsabila/medrec.git](https://github.com/nadjwasalsabila/medrec.git)
+Silakan ikuti langkah-langkah berikut untuk menghubungkan aplikasi dengan dashboard Supabase Anda:
 
-2. Persiapan Database (Point 2)
-    - Pastikan XAMPP/Laragon Anda sudah aktif (Apache & MySQL).
-    - Buka phpMyAdmin di browser Anda.
-    - Buat database baru dengan nama db_medrec.
-    - Cari file bernama medrec.sql di dalam folder database/ pada proyek ini, lalu Import ke database yang baru dibuat.
+### 1. Clone Repositori
+```bash
+git clone [https://github.com/nadjwasalsabila/medrec.git](https://github.com/nadjwasalsabila/medrec.git)cd medrec
 
-3. Konfigurasi Koneksi (Point 3)
-    - Buka file koneksi database (biasanya bernama config.php, koneksi.php, atau di folder config/).
-      Sesuaikan pengaturannya dengan server lokal Anda:
-       - $host = "localhost";
-       - $user = "root";
-       - $pass = "";
-       - $db   = "db_medrec";
+2. Setup Database Supabase (Point 2)
+Buat akun dan proyek baru di Supabase.com.
 
+Buka menu SQL Editor di dashboard Supabase.
+
+Jalankan (Run) query dari file database/schema.sql (jika tersedia di folder proyek) untuk membuat tabel secara otomatis.
+
+Pastikan tabel pasien, rekam_medis, dan users sudah muncul di menu Table Editor.
+
+3. Konfigurasi API Key (Point 3)
+Buka file koneksi database Anda (misal: config.php atau .env).
+
+Ambil Project URL dan Anon Key dari menu Project Settings > API di Supabase.
+
+Masukkan ke dalam kode:
+
+PHP
+
+$SUPABASE_URL = "[https://id-proyek-kamu.supabase.co](https://id-proyek-kamu.supabase.co)";
+$SUPABASE_KEY = "isi-dengan-anon-key-kamu";
 4. Menjalankan Aplikasi (Point 4)
-    - Pastikan folder proyek berada di dalam direktori htdocs (XAMPP) atau www (Laragon).
-    - Buka browser dan akses alamat berikut: http://localhost/medrec
-    - Gunakan akun demo (jika ada) untuk masuk ke sistem.
+Jika menggunakan XAMPP, pindahkan folder proyek ke C:/xampp/htdocs/.
 
-💡 Tips Pengembangan
-    - File SQL: Selalu pastikan file database terbaru sudah di-export ke folder database/ agar kolaborator lain bisa menggunakannya.
-    - Screenshots: Untuk tampilan yang lebih menarik, tambahkan gambar screenshot aplikasi di bawah ini.
+Buka browser dan akses: http://localhost/medrec
 
-📸 Cuplikan Antarmuka
-<p align="center"> <img src="https://www.google.com/search?q=https://via.placeholder.com/700x400%3Ftext%3DTambah%2BScreenshot%2BAplikasi%2BDisini" alt="MedRec Preview"> </p>
+Atau gunakan terminal: php -S localhost:8000
+
+💡 Tips & Catatan Tambahan
+File SQL: Jika kamu melakukan perubahan struktur tabel di Supabase, jangan lupa export SQL-nya ke folder database/ agar teman setim bisa mengikuti.
+
+RLS (Security): Pastikan kebijakan Row Level Security di Supabase sudah diatur agar data pasien tidak bisa diakses sembarang orang.
+
+Screenshots: Tambahkan gambar aplikasi kamu di bawah ini untuk mempercantik tampilan README.

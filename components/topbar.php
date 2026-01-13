@@ -4,13 +4,16 @@
 $topbar_rs_nama = $_SESSION['rs_nama'] ?? 'Rumah Sakit';
 $topbar_rs_kode = $_SESSION['rs_kode'] ?? 'RS001';
 ?>
-<div class="topbar">
+<div class="topbar topbar-dark">
     <div class="d-flex align-items-center">
         <button id="sidebarToggle" class="btn-menu">
             <i class="bi bi-list"></i>
         </button>
         <div class="topbar-title">
-            <h5 class="mb-0">MEDICAL <span class="text-primary">RECORD</span></h5>
+            <h5 class="mb-0">
+                MEDICAL
+                <span class="text-primary">RECORD</span>
+            </h5>
         </div>
     </div>
     

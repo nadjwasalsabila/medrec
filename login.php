@@ -14,6 +14,7 @@ $error = isset($_GET['error']) ? 'Kode RS atau Password salah!' : '';
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <link rel="icon" type="image/png" href="assets/img/logo.png">
     <title>Login - MedRec Transfer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -116,10 +117,8 @@ $error = isset($_GET['error']) ? 'Kode RS atau Password salah!' : '';
 
     <div class="content-card login-card shadow-lg border-0">
         <div class="text-center mb-4">
-            <div class="brand-icon">
-                <i class="bi bi-shield-plus"></i>
-            </div>
-            <h3 class="fw-bold text-dark mb-1">MedRec Transfer</h3>
+             <img src="assets/img/logo.png" alt="Logo" style="height: 130px; width: auto;">
+            <h3 class="fw-bold text-dark mb-1">Medical Record Transfer</h3>
             <p class="text-muted">Akses Data Rekam Medis Terpadu</p>
         </div>
 
@@ -137,10 +136,6 @@ $error = isset($_GET['error']) ? 'Kode RS atau Password salah!' : '';
         <form action="functions/auth.php" method="POST" id="loginForm">
             <div class="mb-4 text-start">
                 <label class="form-label small text-muted fw-bold text-uppercase ls-1">Rumah Sakit</label>
-                <!-- Menggunakan Text Input agar bisa diisi oleh JS, tapi bisa juga Select box -->
-                <!-- Agar kompatibel dengan Quick Login JS yang mengisi value string "RS001", lebih baik Select box tapi diset valuenya? -->
-                <!-- Quick Access JS user code: document.getElementById('rsSelect').value = kodeRs -->
-                <!-- Agar flexible, saya gunakan Select Box seperti legacy code tapi styling modern -->
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0 rounded-start" style="border-radius: 10px 0 0 10px; border-color: var(--gray-300);">
                         <i class="bi bi-building text-muted"></i>

@@ -98,6 +98,7 @@ if(isset($_POST['submit_permintaan'])){
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="icon" type="image/png" href="/assets/img/logo.png">
     <title>Ajukan Permintaan - <?php echo htmlspecialchars($rs_nama); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">

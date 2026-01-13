@@ -1,42 +1,51 @@
 <?php
-// functions/auth.php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
+require_once __DIR__ . '/../config/database.php';
 
-require_once '../config/database.php';
-
+// Ambil input
 $kode_rs = $_POST['kode_rs'] ?? '';
 $password = $_POST['password'] ?? '';
 
-// Validasi login
-if (isset($rumah_sakit[$kode_rs]) && (password_verify($password, $rumah_sakit[$kode_rs]['password']) || $rumah_sakit[$kode_rs]['password'] == $password)) {
-    // Login berhasil
-    $_SESSION['rs_kode'] = $kode_rs;
-    $_SESSION['rs_nama'] = $rumah_sakit[$kode_rs]['nama'];
-    $_SESSION['rs_key'] = $rumah_sakit[$kode_rs]['key'];
-    $_SESSION['login_time'] = time();
-    
-    // Set cookie untuk remember me (30 hari)
-    if (isset($_POST['remember'])) {
-        setcookie('remember_rs', $kode_rs, time() + (30 * 24 * 60 * 60), '/');
-    }
-    
-    // Log login activity
-    $log_data = [
-        'rs_id' => $kode_rs,
-        'aksi' => 'login',
-        'keterangan' => 'Login ke sistem',
-        'waktu' => date('Y-m-d H:i:s')
-    ];
-    @createData('histori', $log_data);
-    
-    // Redirect ke dashboard
-    header('Location: ../dashboard.php');
-    exit;
-} else {
-    // Login gagal
-    header('Location: ../login.php?error=1');
+// Validasi input
+if (empty($kode_rs) || empty($password)) {
+    header('Location: ../index.php?error=1');
     exit;
 }
-?>
+
+// Ambil data RS dari database (CACHE $rumah_sakit)
+if (!isset($rumah_sakit[$kode_rs])) {
+    header('Location: ../index.php?error=1');
+    exit;
+}
+
+$rs = $rumah_sakit[$kode_rs];
+
+// ✅ VERIFIKASI PASSWORD (INI KUNCI UTAMA)
+if (!password_verify($password, $rs['password'])) {
+    header('Location: ../index.php?error=1');
+    exit;
+}
+
+// ✅ LOGIN BERHASIL
+$_SESSION['rs_kode'] = $kode_rs;
+$_SESSION['rs_nama'] = $rs['nama'];
+$_SESSION['rs_key']  = $rs['key'];
+$_SESSION['logged_in'] = true;
+$_SESSION['login_time'] = time();
+
+// (opsional) simpan histori login
+try {
+    createData('histori', [
+        'id' => uniqid() . '_' . time(),
+        'rs_kode' => $kode_rs,
+        'aksi' => 'login',
+        'detail' => 'Login berhasil',
+        'waktu' => date('Y-m-d H:i:s')
+    ]);
+} catch (Exception $e) {
+    // tidak perlu hentikan login
+}
+
+// 🚀 REDIRECT
+header('Location: ../dashboard.php');
+exit;

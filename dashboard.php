@@ -47,6 +47,7 @@ $recent_permintaan = array_slice($permintaan_kita, 0, 5);
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <link rel="icon" type="image/png" href="assets/img/logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - <?php echo htmlspecialchars($rs_nama); ?></title>

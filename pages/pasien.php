@@ -118,24 +118,13 @@ usort($decrypted_patients, function($a, $b) {
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="icon" type="image/png" href="/assets/img/logo.png">
     <title>Data Pasien - <?php echo htmlspecialchars($rs_nama); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/modern-theme.css">
     <style>
-        .topbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: linear-gradient(180deg, #2c3e50, #1a2530);
-            z-index: 1100;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-        }
         .main-content {
             margin-top: 60px;
             margin-left: 0;

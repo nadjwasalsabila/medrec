@@ -44,20 +44,20 @@ Langkah pertama, unduh proyek ini ke komputer Anda:
 git clone [https://github.com/nadjwasalsabila/medrec.git](https://github.com/nadjwasalsabila/medrec.git)
 cd medrec
 ```
-2. Setup Database Supabase
-    - Buat akun dan proyek baru di Supabase.com.
-    - Buka menu SQL Editor di dashboard Supabase Anda.
-    - Jalankan query dari file database/schema.sql untuk membuat tabel secara otomatis.
-    - Pastikan tabel pasien dan rekam_medis sudah muncul di Table Editor.
+### 2. Setup Database Supabase
+  - Buat akun dan proyek baru di Supabase.com.
+  - Buka menu SQL Editor di dashboard Supabase Anda.
+  - Jalankan query dari file database/schema.sql untuk membuat tabel secara otomatis.
+  - Pastikan tabel pasien dan rekam_medis sudah muncul di Table Editor.
 
-3. Konfigurasi API Key
+### 3. Konfigurasi API Key
   Buka file koneksi database Anda (misal: config.php) dan masukkan Project URL serta Anon Key dari menu Settings > API di Supabase:
   ```
   $SUPABASE_URL = "[https://id-proyek-kamu.supabase.co](https://id-proyek-kamu.supabase.co)";
   $SUPABASE_KEY = "isi-dengan-anon-key-kamu";
   ```
 
-4. Menjalankan Aplikasi
+### 4. Menjalankan Aplikasi
    Anda bisa menjalankan aplikasi menggunakan server lokal (XAMPP) atau PHP built-in server:
     - Via XAMPP: Pindahkan folder ke ``` htdocs ``` dan akses ``` http://localhost/medrec.```
     - Via Terminal: Gunakan perintah ``` php -S localhost:8000.```

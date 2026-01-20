@@ -62,10 +62,7 @@ cd medrec
     - Via XAMPP: Pindahkan folder ke ``` htdocs ``` dan akses ``` http://localhost/medrec.```
     - Via Terminal: Gunakan perintah ``` php -S localhost:8000.```
   
-## 📸 Cuplikan Antarmuka
-<p align="center"> <img src="https://www.google.com/search?q=https://via.placeholder.com/800x450%3Ftext%3DUpload%2BScreenshot%2BAplikasi%2BKelompok%2BDisini" alt="MedRec Preview"> </p>
-
-Tim Pengembang (Kontributor)
+## Tim Pengembang (Kontributor)
 Proyek ini disusun oleh mahasiswa Teknik Informatika Universitas Dian Nuswantoro:
   - Raffael Ezra Nugroho - @Renz-Amamiya
   - Nadjwa Salsabila - @nadjwasalsabila
